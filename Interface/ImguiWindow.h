@@ -60,6 +60,7 @@ protected:
     bool show_demo_window{false}; //!< Debug only: ImGui Demo Window to test all ImGui functionalities
     bool show_global_settings{false}; //!< Global Settings window
     bool show_perfo{false}; //!< Plot showing history of simulation performance
+    bool show_conv{false}; //!< Plot showing convergence of simulation stats
     bool show_aabb{false};
     bool show_select{false};
 

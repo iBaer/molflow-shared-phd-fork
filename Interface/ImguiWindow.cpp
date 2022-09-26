@@ -38,6 +38,7 @@ Full license text: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
 #include "ImguiShowNeighbors.h"
 #include "ImguiPerformancePlot.h"
 #include "ImguiSidebar.h"
+#include "ImguiConvergencePlot.h"
 
 #include <imgui/imgui_internal.h>
 #include <imgui/IconsFontAwesome5.h>
@@ -147,6 +148,7 @@ void ImguiWindow::init() {
     show_app_sidebar = false;
     show_aabb = false;
     show_perfo = false;
+    show_conv = false;
     show_select = false;
 
     start_time = ImGui::GetTime();
@@ -265,6 +267,7 @@ void ImguiWindow::renderSingle() {
             ImGui::Checkbox("Menu bar", &show_app_main_menu_bar);
             ImGui::Checkbox("Sidebar", &show_app_sidebar);
             ImGui::Checkbox("Performance Plot", &show_perfo);
+            ImGui::Checkbox("Convergence Plot", &show_conv);
             ImGui::Checkbox("Select neighbors", &show_select);
 
             ImGui::Text("Avg %.3f ms/frame (%.1f FPS)",
@@ -278,6 +281,11 @@ void ImguiWindow::renderSingle() {
         // 3. Show window plotting the simulation performance
         if (show_perfo) {
             ShowPerfoPlot(&show_perfo, mApp);
+        }
+
+        // 3. Show window plotting the simulation convergence
+        if (show_conv) {
+            ShowConvPlot(&show_conv, mApp);
         }
 
         // 3. Show global settings

@@ -123,6 +123,7 @@ set(INTERFACE_FILES
         Interface/ImguiAABB.cpp
         Interface/ImguiGlobalSettings.cpp
         Interface/ImguiPerformancePlot.cpp
+        Interface/ImguiConvergencePlot.cpp
         Interface/ImguiSidebar.cpp
         Interface/ImguiShowNeighbors.cpp
         Interface/ImguiExtensions.cpp
