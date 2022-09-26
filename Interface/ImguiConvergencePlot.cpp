@@ -71,7 +71,9 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
         // Fill an array of contiguous float values to plot
         // Tip: If your float aren't contiguous but part of a structure, you can pass a pointer to your first float
         // and the sizeof() of your structure in the "stride" parameter.
-        static ScrollingBuffer values(100);
+        static ScrollingBuffer values(1000);
+        static ScrollingBuffer sqrtval1(101);
+        static ScrollingBuffer sqrtval2(101);
         //static ScrollingBuffer values_des;
         //static ScrollingBuffer tvalues;
 
@@ -90,10 +92,35 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
                     auto& conv_vec = formulas->convergenceValues[formula_id].conv_vec;
 
                     if(!conv_vec.empty()) {
+
                         auto &conv_last = conv_vec.back();
-                        if (values.Data.Size == 0 || conv_last.first >= values.Data[std::max(0,(values.Offset - 1) % values.Data.Size)].x) {
+                        if (values.Data.Size == 0 || (static_cast<float>(conv_last.first) > 0 && static_cast<float>(conv_last.first) >= values.Data[std::max(0, (values.Offset - 1) % values.MaxSize)].x)) {
                             //for (int j = std::max(0,(int)conv_vec.size()-1000); j < conv_vec.size(); j++) {// limit data points to last 1000
-                            values.AddPoint(conv_last.first, conv_last.second);
+                            values.AddPoint(static_cast<float>(conv_last.first), static_cast<float>(conv_last.second));
+                        }
+
+                        if (values.Data.Size > 12) {
+                            int first = std::max(0, (values.Offset) % values.Data.Size);
+                            int mid = std::max(0, (first + 10) % values.Data.Size);
+                            int last = values.Data.Size == values.MaxSize ? std::max(0, (values.Offset - 2) % values.Data.Size) : values.Data.Size - 1;
+
+                            float c_1 = sqrtf(values.Data[first].x) * values.Data[mid].y;
+                            float c_2 = sqrtf(values.Data[last].x) * values.Data[last].y;
+                            float d_1 = values.Data[last].y - c_1 / sqrtf(values.Data[last].x);
+                            float d_2 = values.Data[last].y + c_1 / sqrtf(values.Data[last].x);
+
+                            sqrtval1.Erase();
+                            sqrtval2.Erase();
+                            for(int i = 0; i <= 100; i++) {
+                                int n_des = values.Data[first].x + i * 0.01 *(values.Data[last].x - values.Data[first].x);
+                                sqrtval1.AddPoint(
+                                        static_cast<float>(n_des),
+                                        static_cast<float>(c_1 / sqrtf(n_des) + d_1));
+                                sqrtval2.AddPoint(
+                                        static_cast<float>(n_des),
+                                        static_cast<float>(-1.0 * c_1 / sqrtf(n_des) + d_2));
+
+                            }
                         }
                     }
                 }
@@ -108,7 +135,7 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
 
                 float max_val = -9999999.9f;
                 float min_val = 9999999.9f;
-                for (int i = 0; i < values.Data.size(); ++i) {
+                for (int i = values.Data.size() > 20 ? 5 : 0; i < values.Data.size(); ++i) {
                     if (values.Data[i].y > max_val) {
                         max_val = values.Data[i].y;
                     }
@@ -127,18 +154,27 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
                 //ImGui::PlotLines(""*//*"Hit/s"*//*, values, IM_ARRAYSIZE(values), values_offset, overlay, min_val * 0.95f, max_val * 1.05f,ImVec2(0, 80.0f));
 
                 float rel = (max_val - min_val) / (max_val + min_val);
-                ImPlot::SetNextAxisLimits(ImAxis_Y1, std::max(0.0f, min_val * (1.0f-0.2f*rel)), max_val * (1.0f+0.2f*rel), ImGuiCond_Always);
-                if (ImPlot::BeginPlot("##Conv", "Numer of desorptions", "Value (formula)", ImVec2(-1, -1),
+                //ImPlot::SetNextAxisLimits(ImAxis_Y1, std::max(0.0f, min_val * (1.0f-0.2f*rel)), max_val * (1.0f+0.2f*rel), ImGuiCond_Always);
+                /*if (ImPlot::BeginPlot("##Conv", "Numer of desorptions", "Value (formula)", ImVec2(-1, -1),
                                       ImPlotAxisFlags_None,
-                                      ImPlotAxisFlags_AutoFit /*| ImPlotAxisFlags_Time*//*, ImPlotAxisFlags_AutoFit*/)) {
-
-
+                                      ImPlotAxisFlags_AutoFit *//*| ImPlotAxisFlags_Time*//**//*, ImPlotAxisFlags_AutoFit*//*)) {*/
+                if (ImPlot::BeginPlot("##Conv", ImVec2(-1, -1), ImPlotFlags_None)) {
+                    ImPlot::SetupAxes("Number of desorptions", "Value (formula)", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+                    //ImPlot::SetupAxesLimits(0, 0, std::max(0.0f, min_val * (1.0f-0.2f*rel)), max_val * (1.0f+0.2f*rel), ImPlotCond_Once);
+                    ImPlot::SetupAxisLimits(ImAxis_Y1, std::max(0.0f, min_val * (1.0f-0.2f*rel)), max_val * (1.0f+0.2f*rel), ImPlotCond_Always);
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
                     if(values.Data.Size > 1) {
-                        ImPlot::PlotLine("Hit/s", &values.Data[0].x, &values.Data[0].y, values.Data.size(), 0,
+                        ImPlot::PlotLine(formulas->formulas_n.front()->GetName(), &values.Data[0].x, &values.Data[0].y, values.Data.size(), 0,
                                          values.Offset, 2 * sizeof(float));
-                        ImPlot::PlotShaded("Hit/s", &values.Data[0].x, &values.Data[0].y, values.Data.size(), -INFINITY, 0, values.Offset, 2 * sizeof(float));
+                        ImPlot::PlotShaded(formulas->formulas_n.front()->GetName(), &values.Data[0].x, &values.Data[0].y, values.Data.size(), -INFINITY, 0, values.Offset, 2 * sizeof(float));
                     }
+                    if(sqrtval1.Data.Size > 1) {
+                        ImPlot::PlotLine("c1 1/sqrt(N)", &sqrtval1.Data[0].x, &sqrtval1.Data[0].y, sqrtval1.Data.size(), 0,
+                                         0, 2 * sizeof(float));
+                        ImPlot::PlotLine("c2 1/sqrt(N)", &sqrtval2.Data[0].x, &sqrtval2.Data[0].y, sqrtval2.Data.size(), 0,
+                                         0, 2 * sizeof(float));
+                    }
+
                     //ImPlot::PlotLine("Des/s", tvalues, values_des, IM_ARRAYSIZE(values_des), values_offset);
                     //ImPlot::PlotShaded("Des/s", tvalues, values_des, IM_ARRAYSIZE(values_des), -INFINITY, values_offset);
                     ImPlot::PopStyleVar();
@@ -147,7 +183,7 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
                 }
 
                 if(ImGui::Button("Reset Data")){
-                    values = {};
+                    values.Erase();
                 }
 
 
