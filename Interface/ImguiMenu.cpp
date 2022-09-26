@@ -808,7 +808,7 @@ static void ShowMenuAbout() {
 // the main viewport + call BeginMenuBar() into it.
 void ShowAppMainMenuBar() {
     // TODO: Try shortcuts
-    if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(SDL_SCANCODE_Q)){
+    if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Q)){
         ImGui::OpenPopup("testmod");
     }
 

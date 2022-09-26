@@ -93,8 +93,8 @@ void ShowPerfoPlot(bool *p_open, Interface *mApp) {
             sprintf(overlay, "avg %f hit/s", average);
             //ImGui::PlotLines(""*//*"Hit/s"*//*, values, IM_ARRAYSIZE(values), values_offset, overlay, min_val * 0.95f, max_val * 1.05f,ImVec2(0, 80.0f));
 
-            ImPlot::SetNextPlotLimitsY(std::max(0.0f, min_val * 0.8f),max_val * 1.2f, ImGuiCond_Always);
-            if (ImPlot::BeginPlot("##Perfo", "time (s)", "performance (hit/s)", ImVec2(-1, -1), ImPlotFlags_AntiAliased,
+            ImPlot::SetNextAxisLimits(std::max(0.0f, min_val * 0.8f),max_val * 1.2f, ImGuiCond_Always);
+            if (ImPlot::BeginPlot("##Perfo", "time (s)", "performance (hit/s)", ImVec2(-1, -1), ImPlotFlags_None,
                                   ImPlotAxisFlags_AutoFit/* | ImPlotAxisFlags_Time*//*, ImPlotAxisFlags_AutoFit*/)) {
                 ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
                 ImPlot::PlotLine("Hit/s", tvalues, values, IM_ARRAYSIZE(values), values_offset);

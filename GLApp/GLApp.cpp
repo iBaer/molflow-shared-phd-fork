@@ -448,10 +448,10 @@ void GLApplication::Run() {
          if(imWnd) {
              auto ctx = ImGui::GetCurrentContext();
 
-             bool activeImGuiEvent = (ImGui::GetIO().WantCaptureKeyboard || ctx->WantCaptureKeyboardNextFrame != -1)
-                                     || (ImGui::GetIO().WantCaptureMouse || ctx->WantCaptureMouseNextFrame != -1)
-                                     || (ImGui::GetIO().WantTextInput || ctx->WantTextInputNextFrame != -1);
-             if(!activeImGuiEvent){
+             bool activeImGuiEvent = (ImGui::GetIO().WantCaptureKeyboard/* || ctx->WantCaptureKeyboardNextFrame != -1*/)
+                                     || (ImGui::GetIO().WantCaptureMouse/* || ctx->WantCaptureMouseNextFrame != -1*/)
+                                     || (ImGui::GetIO().WantTextInput/* || ctx->WantTextInputNextFrame != -1*/);
+             /*if(!activeImGuiEvent){
                  // workaround for some mouse events getting triggered on old implementation first, results e.g. in selection-rectangle when clicking on ImGui window
                  // ImGui_ImplSDL2_NewFrame updates the mouse position, but is only called on ImGui render cycle
                  // Check for mouse events in imgui windows manually
@@ -460,31 +460,41 @@ void GLApplication::Run() {
                      for(auto win : ctx->Windows){
                          if(win->Active) {
                              // Mouse position
-                             //auto mouse_pos = ImGui::GetIO().MousePos;
-                             auto& mouse_pos = sdlEvent.button;
+                             auto mouse_pos = ImGui::GetIO().MousePos;
+                             //auto& mouse_pos = sdlEvent.button;
                              if (win->OuterRectClipped.Min.x < mouse_pos.x &&
                                  win->OuterRectClipped.Max.x > mouse_pos.x
                                  &&
                                  win->OuterRectClipped.Min.y < mouse_pos.y &&
                                  win->OuterRectClipped.Max.y > mouse_pos.y) {
                                  activeImGuiEvent = true;
-                                 break;
+                                 //break;
                              }
                          }
                      }
                  }
-             }
+             }*/
              if (activeImGuiEvent) {
                  wereEvents_imgui = 3;
                  if(ImGui_ImplSDL2_ProcessEvent(&sdlEvent)){
 
                  }
-                 continue;
+                 if (sdlEvent.type!=SDL_MOUSEMOTION || sdlEvent.motion.state!=0) {
+                     //wereEvents = true;
+                     wereEvents_imgui = 3;
+                 }
+                 if (sdlEvent.type==SDL_MOUSEMOTION) {
+                     sdlEvent.type = {};
+                 }
+                 //continue;
+                 //break;
              }
          }
-		if (sdlEvent.type!=SDL_MOUSEMOTION || sdlEvent.motion.state!=0) {
-            wereEvents = true;
-            wereEvents_imgui = 3;
+
+         if ((sdlEvent.type>=SDL_MOUSEMOTION && sdlEvent.type<=SDL_MOUSEWHEEL ) || (sdlEvent.type>=SDL_KEYDOWN && sdlEvent.type<=SDL_TEXTINPUT)/* || sdlEvent.type!=SDL_KEYMAPCHANGED*/) {
+		//if (sdlEvent.type!=SDL_MOUSEMOTION || sdlEvent.motion.state!=0  || sdlEvent.type!=SDL_KEYMAPCHANGED) {
+  //          wereEvents = true;
+   //         wereEvents_imgui = 3;
         }
 
        UpdateEventCount(&sdlEvent);

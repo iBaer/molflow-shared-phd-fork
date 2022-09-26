@@ -311,7 +311,7 @@ void ShowGlobalSettings(SynRad *mApp, bool *show_global_settings, bool &nbProcCh
     /*bool nbProcChanged = false;
     int nbProc = mApp->worker.GetProcNumber();*/
     ImGui::SetNextItemWidth(50.0f);
-    ImGui::DragInt("", &nbProc, 1, 0, MAX_PROCESS, "%d",
+    ImGui::DragInt("##", &nbProc, 1, 0, MAX_PROCESS, "%d",
                    ImGuiSliderFlags_AlwaysClamp);
 
     ImGui::SameLine();

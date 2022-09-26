@@ -77,6 +77,10 @@ void ImguiWindow::init() {
     ImPlot::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
     (void) io;
+
+    // Enable Multi Viewport
+    //ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
     // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable
     // Keyboard Controls io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; //
     // Enable Gamepad Controls
@@ -238,7 +242,7 @@ void ImguiWindow::renderSingle() {
         // 1. Show the big demo window (Most of the sample code is in
         // ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear
         // ImGui!).
-        if ((io.KeyCtrl && io.KeyShift && io.KeyAlt && ImGui::IsKeyDown(SDL_GetScancodeFromKey(SDLK_d))))
+        if ((io.KeyCtrl && io.KeyShift && io.KeyAlt && ImGui::IsKeyDown(ImGuiKey_D)))
             show_demo_window = !show_demo_window;
         if (show_demo_window) {
             ImGui::ShowDemoWindow(&show_demo_window);
@@ -329,6 +333,13 @@ void ImguiWindow::renderSingle() {
         glViewport(0, 0, (int) io.DisplaySize.x, (int) io.DisplaySize.y);
         ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
         // SDL_GL_SwapWindow(app->mainScreen);
+
+        // Update and Render additional Platform Windows
+        /*if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+        }*/
 
         // Handle button events at the end, because some functions call GL Repaint,
         // which doesnt work well with ImGui if frame is not finalized

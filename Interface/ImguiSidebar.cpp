@@ -147,7 +147,8 @@ void ShowAppSidebar(bool *p_open, SynRad *mApp, Geometry *geom, bool *show_globa
         window_pos_pivot.x = (corner & 1) ? 1.0f : 0.0f;
         window_pos_pivot.y = (corner & 2) ? 1.0f : 0.0f;
         ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-        ImGui::SetNextWindowViewport(viewport->ID);
+        //ImGui::SetNextWindowViewport(viewport->ID);
+        //ImGui::SetNextWindowViewport(viewport->ID);
         flags |= ImGuiWindowFlags_NoMove;
     }
 
@@ -229,8 +230,8 @@ void ShowAppSidebar(bool *p_open, SynRad *mApp, Geometry *geom, bool *show_globa
             title = fmt::format("Selected Facet (none)");
         }
         if (ImGui::CollapsingHeader(title.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth()*0.35f);
-            ImGui::PushItemWidth(ImGui::GetContentRegionAvailWidth()*0.25f);
+            ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x*0.35f);
+            ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x*0.25f);
             size_t selected_facet_id = geom->GetNbSelectedFacets() ? geom->GetSelectedFacets().front() : 0;
             auto sel = geom->GetNbSelectedFacets() ? geom->GetFacet(selected_facet_id) : nullptr;
 #if defined(MOLFLOW)
