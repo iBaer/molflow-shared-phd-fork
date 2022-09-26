@@ -493,8 +493,8 @@ void GLApplication::Run() {
 
          if ((sdlEvent.type>=SDL_MOUSEMOTION && sdlEvent.type<=SDL_MOUSEWHEEL ) || (sdlEvent.type>=SDL_KEYDOWN && sdlEvent.type<=SDL_TEXTINPUT)/* || sdlEvent.type!=SDL_KEYMAPCHANGED*/) {
 		//if (sdlEvent.type!=SDL_MOUSEMOTION || sdlEvent.motion.state!=0  || sdlEvent.type!=SDL_KEYMAPCHANGED) {
-  //          wereEvents = true;
-   //         wereEvents_imgui = 3;
+            wereEvents = true;
+            wereEvents_imgui = 3;
         }
 
        UpdateEventCount(&sdlEvent);

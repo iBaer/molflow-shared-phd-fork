@@ -2867,14 +2867,18 @@ int Interface::FrameMove() {
         forceFrameMoveButton->SetEnabled(!autoFrameMove);
         forceFrameMoveButton->SetText("Update");
     } else {
-        if(!runningState && worker.simuTimer.Elapsed() > 0.0) {
-            double _hps = (double) (hitCache.nbMCHit - nbHitStart) / worker.simuTimer.Elapsed();
-            double _dps = (double) (hitCache.nbDesorbed - nbDesStart) / worker.simuTimer.Elapsed();
-            if(hps.last() != _hps || dps.last() != _dps)
-                wereEvents = true;
-        } else {
-            if(hps.last() != 0.0  || dps.last() != 0.0)
-                wereEvents = true;
+
+        if(m_fTime - lastUpdate >= 1.0f) {
+            if (!runningState && worker.simuTimer.Elapsed() > 0.0) {
+                double _hps = (double) (hitCache.nbMCHit - nbHitStart) / worker.simuTimer.Elapsed();
+                double _dps = (double) (hitCache.nbDesorbed - nbDesStart) / worker.simuTimer.Elapsed();
+                if (hps.last() != _hps || dps.last() != _dps)
+                    wereEvents = true;
+            } else {
+                if (hps.last() != 0.0 || dps.last() != 0.0)
+                    wereEvents = true;
+            }
+            lastUpdate = m_fTime;
         }
 
         if(runningState)
