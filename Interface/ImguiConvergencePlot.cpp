@@ -242,7 +242,7 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
                                       ImPlotAxisFlags_None,
                                       ImPlotAxisFlags_AutoFit *//*| ImPlotAxisFlags_Time*//**//*, ImPlotAxisFlags_AutoFit*//*)) {*/
                 if (ImPlot::BeginPlot("##Conv", ImVec2(-1, -1), ImPlotFlags_None)) {
-                    ImPlot::SetupAxes("Number of desorptions", "Value (formula)", ImsPlotAxisFlags_AutoFit, plot_limit_y ? ImPlotAxisFlags_AutoFit : ImPlotAxisFlags_None);
+                    ImPlot::SetupAxes("Number of desorptions", "Value (formula)", ImPlotAxisFlags_AutoFit, plot_limit_y ? ImPlotAxisFlags_AutoFit : ImPlotAxisFlags_None);
                     //ImPlot::SetupAxesLimits(0, 0, std::max(0.0f, min_val * (1.0f-0.2f*rel)), max_val * (1.0f+0.2f*rel), ImPlotCond_Once);
 
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
