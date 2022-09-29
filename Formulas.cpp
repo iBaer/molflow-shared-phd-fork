@@ -81,6 +81,10 @@ void Formulas::UpdateVectorSize() {
     if (lastFormulaValues.size() != nbFormulas) {
         lastFormulaValues.resize(nbFormulas);
     }
+    if (freq_accum.size() != nbFormulas) {
+        freq_accum.resize(nbFormulas, std::vector<size_t>(cb_length));
+    }
+
 }
 
 //! Get updated formula values for later usage in corresponding windows
@@ -199,9 +203,9 @@ double Formulas::GetConvRate(int formulaId) {
     double var = invN * sumValSquared - std::pow(invN * sumVal,2);
     double convDelta = 3.0 * std::sqrt(var) / (conv_vec.size() * conv_vec.size());
 
-    if(convDelta / conv_vec.back().second < 1.0e-6) Log::console_msg(2, "[1] Sufficient convergent reached: {:e}\n", convDelta / conv_vec.back().second);
 
-    double xmean = sumVal * invN;
+    //double xmean = sumVal * invN;
+    double xmean = conv_vec.back().second; // ^ it doesnt make sense to calculate a mean, as it' s already commulative
     double varn = 0.0;
     for(auto& convVal : conv_vec){
         varn += std::pow(convVal.second - xmean,2);
@@ -210,15 +214,36 @@ double Formulas::GetConvRate(int formulaId) {
     double quant95Val = 1.96 * std::sqrt(varn) / std::sqrt(conv_vec.size());
     double quant99Val = 2.576 * std::sqrt(varn) / std::sqrt(conv_vec.size());
     double quant995Val = 3.0 * std::sqrt(varn) / std::sqrt(conv_vec.size());
-    if(xmean - quant95Val <= conv_vec.back().second && xmean + quant95Val >= conv_vec.back().second) Log::console_msg(2, "[95.0] Sufficient convergent reached: {:e} in [{:e} , {:e}]\n", conv_vec.back().second, xmean - quant95Val, xmean + quant95Val);
-    else if(xmean - quant99Val <= conv_vec.back().second && xmean + quant99Val >= conv_vec.back().second) Log::console_msg(2, "[99.0] Sufficient convergent reached: {:e} in [{:e} , {:e}]\n", conv_vec.back().second, xmean - quant99Val, xmean + quant99Val);
-    else if(xmean - quant995Val <= conv_vec.back().second && xmean + quant995Val >= conv_vec.back().second) Log::console_msg(2, "[99.5] Sufficient convergent reached: {:e} in [{:e} , {:e}]\n", conv_vec.back().second, xmean - quant995Val, xmean + quant995Val);
+
+    const double val_eps = useAbsEps ? 0.5 * std::pow(10.0, -1.0*epsilon) : 0.5 * xmean * std::pow(10.0, -1.0*epsilon);
+    double upper_bound = xmean + val_eps;
+    double lower_bound = xmean - val_eps;
+
+   /* if(convDelta / xmean < 1.0e-6)
+        Log::console_msg(2, "[1] Sufficient convergent reached: {:e}\n", convDelta / conv_vec.back().second);
+
+*/
+    if(xmean - quant995Val >= lower_bound && xmean + quant995Val <= upper_bound)
+        Log::console_msg(2, "[CI 99.5%] Convergence reached: {:e} +- {:e} / {:e} = {:e} in [{:e} , {:e}]\n",
+             conv_vec.back().second, varn, std::sqrt(varn), quant995Val, xmean - quant99Val, xmean + quant995Val);
+    else if(xmean - quant99Val >= lower_bound && xmean + quant99Val <= upper_bound)
+        Log::console_msg(2, "[CI 99.0%] Convergence reached: {:e} in [{:e} , {:e}]\n", conv_vec.back().second, xmean - quant99Val, xmean + quant99Val);
+    else if(xmean - quant95Val >= lower_bound && xmean + quant95Val <= upper_bound)
+        Log::console_msg(2, "[CI 95.0%] Convergence reached: {:e} in [{:e} , {:e}]\n", conv_vec.back().second, xmean - quant95Val, xmean + quant95Val);
+        /*if(xmean - quant995Val <= conv_vec.back().second && xmean + quant995Val >= conv_vec.back().second)
+            Log::console_msg(2, "[CI 99.5%] Convergence reached: {:e} +- {:e} / {:e} = {:e} in [{:e} , {:e}]\n",
+                             conv_vec.back().second, varn, std::sqrt(varn), quant995Val, xmean - quant99Val, xmean + quant995Val);
+        else if(xmean - quant99Val <= conv_vec.back().second && xmean + quant99Val >= conv_vec.back().second)
+            Log::console_msg(2, "[CI 99.0%] Convergence reached: {:e} in [{:e} , {:e}]\n", conv_vec.back().second, xmean - quant99Val, xmean + quant99Val);
+        else if(xmean - quant95Val <= conv_vec.back().second && xmean + quant95Val >= conv_vec.back().second)
+            Log::console_msg(2, "[CI 95.0%] Convergence reached: {:e} in [{:e} , {:e}]\n", conv_vec.back().second, xmean - quant95Val, xmean + quant95Val);
+        */
     else {
-        double dist = std::min(conv_vec.back().second - xmean + quant995Val, conv_vec.back().second + xmean - quant995Val);
-        Log::console_msg(2, "[4] Convergence distance to a995: {:e} --> {:e} close to [{:e} , {:e}]\n", dist, conv_vec.back().second, xmean - quant995Val, xmean + quant995Val);
-        Log::console_msg(2, "[4] Abs to a95: {:e} --> Rel to a95: {:e} / {:e}\n", quant95Val, (conv_vec.back().second - xmean) / xmean, (quant95Val / conv_vec.back().second));
+        double dist = std::min(lower_bound - xmean + quant95Val, upper_bound - xmean - quant95Val);
+        Log::console_msg(2, "[4] Convergence distance to a=0.95: {:e} --> {:e} close to [{:e} , {:e}]\n", dist, conv_vec.back().second, xmean - quant95Val, xmean + quant95Val);
+        //Log::console_msg(2, "[4] Abs to a95: {:e} --> Rel to a95: {:e} / {:e}\n", quant95Val, (conv_vec.back().second - xmean) / xmean, (quant95Val / conv_vec.back().second));
     }
-    return convDelta;
+    return quant95Val * sqrt(varn*varn/conv_vec.size());
 }
 
 /**
@@ -229,8 +254,8 @@ void Formulas::RestartASCBR(int formulaId){
     convData.chain_length = 0;
     convData.upper_bound = convData.lower_bound = 0.0;
 
-    freq_accum.clear();
-    freq_accum.resize(cb_length);
+    freq_accum[formulaId].clear();
+    freq_accum[formulaId].resize(cb_length);
 }
 
 /**
@@ -256,7 +281,7 @@ bool Formulas::CheckASCBR(int formulaId) {
     const double conv_mean_local = convData.conv_vec.back().second;
 
     // Step 3: Check if mean still within bounds
-    bool withinBounds = (conv_mean_local >= convData.lower_bound && conv_mean_local <= convData.upper_bound) ? true : false;
+    bool withinBounds = (conv_mean_local >= convData.lower_bound && conv_mean_local <= convData.upper_bound);
 
     if(!withinBounds){
         // half-width of convergence band
@@ -267,7 +292,7 @@ bool Formulas::CheckASCBR(int formulaId) {
         convData.upper_bound = conv_mean_local + eps;
         convData.lower_bound = conv_mean_local - eps;
         // Step 5: Update length of inbound "chain"
-        ++freq_accum[(convData.chain_length>=cb_length)?0:convData.chain_length];
+        ++freq_accum[formulaId][(convData.chain_length>=cb_length)?0:convData.chain_length];
         convData.chain_length = 0;
     }
     else{
@@ -275,31 +300,18 @@ bool Formulas::CheckASCBR(int formulaId) {
         ++convData.chain_length;
     }
 
-    return convData.chain_length > cb_len;
+    return convData.chain_length >= cb_len;
 }
 
-double Formulas::ApproxShapeParameter() {
+double Formulas::ApproxShapeParameter(int formulaId, int index_from = 1) {
     // Initialize
     double shape_param = 0.0;
     double den = 0.0;
     for(int i = 1; i < cb_length; ++i){
-        den += (double) i * freq_accum[i];
+        den += (double) i * freq_accum[formulaId][i];
     }
     if(den <= 1e-8) den = 1.0;
-    shape_param = 1.0 - freq_accum[1] / den;
-
-    return shape_param;
-}
-
-double Formulas::ApproxShapeParameter2() {
-    // Initialize
-    double shape_param = 0.0;
-    double den = 0.0;
-    for(int i = 1; i < cb_length; ++i){
-        den += (double) i * freq_accum[i];
-    }
-    if(den <= 1e-8) den = 1.0;
-    shape_param = 1.0 - freq_accum[0] / den;
+    shape_param = freq_accum.size() > index_from ? 1.0 - freq_accum[formulaId][index_from] / den : 0.0;
 
     return shape_param;
 }

@@ -43,7 +43,6 @@ struct Formulas {
 
     Formulas(FormulaEvaluator* eval) : formulasChanged(true), sampleConvValues(true), epsilon(5), cb_length(51), useAbsEps(true){
         evaluator=eval;
-        freq_accum.resize(cb_length);
     };
     ~Formulas(){
         for(auto f : formulas_n){
@@ -62,8 +61,7 @@ struct Formulas {
     double GetConvRate(int formulaId);
     void RestartASCBR(int formulaId);
     bool CheckASCBR(int formulaId);
-    double ApproxShapeParameter();
-    double ApproxShapeParameter2();
+    double ApproxShapeParameter(int formulaId, int index_from);
 
     void pruneEveryN(size_t everyN, int formulaId, size_t skipLastN);
     void pruneFirstN(size_t n, int formulaId);
@@ -71,7 +69,7 @@ struct Formulas {
     std::vector<GLParser*> formulas_n;
     std::vector<std::pair<size_t,double>> lastFormulaValues;
     std::vector<ConvergenceData> convergenceValues; // One vector of nbDesorption,formulaValue pairs for each formula
-    std::vector<size_t> freq_accum;
+    std::vector<std::vector<size_t>> freq_accum;
     bool formulasChanged;
     bool sampleConvValues;
 

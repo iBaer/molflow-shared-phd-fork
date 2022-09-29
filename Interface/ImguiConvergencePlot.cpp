@@ -44,7 +44,7 @@ struct ScrollingBuffer {
         }
     }
     void Erase() {
-        if (Data.size() > 0) {
+        if (!Data.empty()) {
             Data.shrink(0);
             Offset  = 0;
         }
@@ -56,16 +56,96 @@ struct ScrollingBuffer {
 void ShowConvPlot(bool *p_open, Interface *mApp) {
     ImGuiIO &io = ImGui::GetIO();
 
+    static ImGuiWindowFlags flags =/*
+            ImGuiWindowFlags_AlwaysAutoResize |*/
+            ImGuiWindowFlags_NoSavedSettings;
+
+    auto formulas = mApp->formula_ptr;
+
+    static int c_prec = formulas->epsilon;
+    static int cb_len = formulas->cb_length;
+    static float c_rate = 0.0;
+    static float sp1 = 0.0;
+    static float sp2 = 0.0;
+    static bool use_abs_err = formulas->useAbsEps;
+
+    static bool plot_ascbr = true;
+    static int plot_limit_y = 0;
+    /*static bool plot_limit_y = true; // 1
+    static bool plot_limit_y2 = false; // 2
+    static bool plot_limit_y_ascbr = false; // 3*/
+
+    if (ImGui::Begin("Convergence Settings", p_open, flags | ImGuiWindowFlags_AlwaysAutoResize)) {
+        if(ImGui::BeginTabBar("Conv Crit")){
+            if(ImGui::BeginTabItem("Plot options")) {
+                ImGui::RadioButton("Unlimit Y", &plot_limit_y, 0);
+                ImGui::RadioButton("Limit Y", &plot_limit_y, 1);
+                ImGui::RadioButton("Limit Y 200%", &plot_limit_y,2);
+                ImGui::RadioButton("Limit Y to ASCBR", &plot_limit_y,3);
+
+                ImGui::EndTabItem();
+            }
+            if(ImGui::BeginTabItem("ASCBR")) {
+
+                ImGui::Checkbox("Plot ASCBR Intervals", &plot_ascbr);
+                ImGui::Spacing();
+
+                bool apply_change = false;
+                if(ImGui::SliderInt("Precision {10^-d}: d=", &c_prec, 0, 31)
+                ||ImGui::SliderInt("CB length: C=", &cb_len, 0, 31)){
+                    apply_change = true;
+                }
+
+               if(ImGui::Checkbox("Absolute precision", &use_abs_err)){
+                    apply_change = true;
+                }
+
+               if(!formulas->formulas_n.empty()) {
+                   ImGui::Spacing();
+                   static int fid = 0;
+                   ImGui::SliderInt("Formula #", &fid, 0, formulas->formulas_n.size()-1);
+                   if (mApp->worker.IsRunning() && formulas->FetchNewConvValue()) {
+                       sp1 = formulas->ApproxShapeParameter(fid, 1);
+                       sp2 = formulas->ApproxShapeParameter(fid, 0);
+                       c_rate = formulas->GetConvRate(fid);
+                   }
+
+                   ImGui::Text("%s", fmt::format("Conv. rate: {:e}", c_rate).c_str());
+                   ImGui::SameLine();
+                   ImGui::Text("%s", fmt::format("Shape Param 1: {:5.4f}", sp1).c_str());
+                   ImGui::SameLine();
+                   ImGui::Text("%s", fmt::format("Shape Param 2: {:5.4f}", sp2).c_str());
+
+                   if (!formulas->convergenceValues.empty()) {
+                       auto &formula = formulas->convergenceValues[fid];
+                       ImGui::Text("%s", fmt::format("Current chain: {}", formula.chain_length).c_str());
+                       ImGui::SameLine();
+                       ImGui::Text("%s", fmt::format("Boundaries: [{:e} , {:e}]", formula.lower_bound,
+                                                     formula.upper_bound).c_str());
+                   }
+               }// active formula
+
+                if(apply_change){
+
+                    formulas->useAbsEps = use_abs_err;
+                    formulas->cb_length = cb_len;
+                    formulas->epsilon = c_prec;
+
+                    for(int id = 0; id < formulas->convergenceValues.size(); ++id)
+                        formulas->RestartASCBR(id);
+                }
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        } //tabbar
+        ImGui::End();
+    }
+
     // Always center this window when appearing
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
     ImGui::SetNextWindowPos(center, ImGuiCond_Appearing,
                             ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
-
-    static ImGuiWindowFlags flags =/*
-            ImGuiWindowFlags_AlwaysAutoResize |*/
-            ImGuiWindowFlags_NoSavedSettings;
-
     if (ImGui::Begin("Convergence Plot", p_open, flags)) {
 
         // Fill an array of contiguous float values to plot
@@ -74,6 +154,10 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
         static ScrollingBuffer values(1000);
         static ScrollingBuffer sqrtval1(101);
         static ScrollingBuffer sqrtval2(101);
+
+        static ScrollingBuffer ascbr_lower(2);
+        static ScrollingBuffer ascbr_upper(2);
+
         //static ScrollingBuffer values_des;
         //static ScrollingBuffer tvalues;
 
@@ -82,7 +166,6 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
             refresh_time = ImGui::GetTime();
         auto now_time = ImGui::GetTime();
 
-        auto formulas = mApp->formula_ptr;
         auto formula_id = 0;
         if(!formulas->formulas_n.empty()) {
             if (mApp->worker.IsRunning() && difftime(now_time, refresh_time) > 1.0) {
@@ -159,11 +242,20 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
                                       ImPlotAxisFlags_None,
                                       ImPlotAxisFlags_AutoFit *//*| ImPlotAxisFlags_Time*//**//*, ImPlotAxisFlags_AutoFit*//*)) {*/
                 if (ImPlot::BeginPlot("##Conv", ImVec2(-1, -1), ImPlotFlags_None)) {
-                    ImPlot::SetupAxes("Number of desorptions", "Value (formula)", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+                    ImPlot::SetupAxes("Number of desorptions", "Value (formula)", ImsPlotAxisFlags_AutoFit, plot_limit_y ? ImPlotAxisFlags_AutoFit : ImPlotAxisFlags_None);
                     //ImPlot::SetupAxesLimits(0, 0, std::max(0.0f, min_val * (1.0f-0.2f*rel)), max_val * (1.0f+0.2f*rel), ImPlotCond_Once);
-                    ImPlot::SetupAxisLimits(ImAxis_Y1, std::max(0.0f, min_val * (1.0f-0.2f*rel)), max_val * (1.0f+0.2f*rel), ImPlotCond_Always);
+
                     ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
                     if(values.Data.Size > 1) {
+                        float xmean = values.Data.back().y;
+                        float dist_to_mean = std::max(fabs(min_val - xmean), fabs(max_val - xmean));
+                        if(plot_limit_y == 1)
+                            ImPlot::SetupAxisLimits(ImAxis_Y1, std::max(0.0f, min_val * (1.0f-0.2f*rel)), max_val * (1.0f+0.2f*rel), ImPlotCond_Always);
+                        else if(plot_limit_y == 2)
+                            ImPlot::SetupAxisLimits(ImAxis_Y1, xmean - 2.0f * dist_to_mean, xmean +  2.0f * dist_to_mean, ImPlotCond_Always);
+                        else if(plot_ascbr && plot_limit_y == 3)
+                            ImPlot::SetupAxisLimits(ImAxis_Y1, ascbr_lower.Data[0].y - dist_to_mean, ascbr_upper.Data[0].y + dist_to_mean, ImPlotCond_Always);
+
                         ImPlot::PlotLine(formulas->formulas_n.front()->GetName(), &values.Data[0].x, &values.Data[0].y, values.Data.size(), 0,
                                          values.Offset, 2 * sizeof(float));
                         ImPlot::PlotShaded(formulas->formulas_n.front()->GetName(), &values.Data[0].x, &values.Data[0].y, values.Data.size(), -INFINITY, 0, values.Offset, 2 * sizeof(float));
@@ -172,6 +264,20 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
                         ImPlot::PlotLine("c1 1/sqrt(N)", &sqrtval1.Data[0].x, &sqrtval1.Data[0].y, sqrtval1.Data.size(), 0,
                                          0, 2 * sizeof(float));
                         ImPlot::PlotLine("c2 1/sqrt(N)", &sqrtval2.Data[0].x, &sqrtval2.Data[0].y, sqrtval2.Data.size(), 0,
+                                         0, 2 * sizeof(float));
+                    }
+                    if(plot_ascbr){
+                        ascbr_lower.AddPoint(static_cast<float>(values.Data.front().x),
+                                             static_cast<float>(formulas->convergenceValues.front().lower_bound));
+                        ascbr_lower.AddPoint(static_cast<float>(values.Data.back().x),
+                                             static_cast<float>(formulas->convergenceValues.front().lower_bound));
+                        ascbr_upper.AddPoint(static_cast<float>(values.Data.front().x),
+                                             static_cast<float>(formulas->convergenceValues.front().upper_bound));
+                        ascbr_upper.AddPoint(static_cast<float>(values.Data.back().x),
+                                             static_cast<float>(formulas->convergenceValues.front().upper_bound));
+                        ImPlot::PlotLine("ASCBR", &ascbr_lower.Data[0].x, &ascbr_lower.Data[0].y, ascbr_lower.Data.size(), 0,
+                                         0, 2 * sizeof(float));
+                        ImPlot::PlotLine("ASCBR", &ascbr_upper.Data[0].x, &ascbr_upper.Data[0].y, ascbr_upper.Data.size(), 0,
                                          0, 2 * sizeof(float));
                     }
 
@@ -185,15 +291,33 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
                 if(ImGui::Button("Reset Data")){
                     values.Erase();
                 }
-
+                static int prune_n = 0;
+                ImGui::SliderInt("N", &prune_n, 0, values.Data.size());
+                if(ImGui::Button("Prune every N")){
+                    int skip_last_n = 0;
+                    for (int formulaId = 0; formulaId < formulas->formulas_n.size(); ++formulaId) {
+                        formulas->pruneEveryN(4, formulaId, skip_last_n);
+                    }
+                    for (int i = values.Data.size() - prune_n - skip_last_n; i > 0; i = i - prune_n)
+                        values.Data.erase(values.Data.begin() + i);
+                }
+                ImGui::SameLine();
+                if(ImGui::Button("Prune first N")){
+                    for (int formulaId = 0; formulaId < formulas->formulas_n.size(); ++formulaId) {
+                        formulas->pruneFirstN(100, formulaId);
+                    }
+                    values.Data.erase(values.Data.begin(), values.Data.begin() + std::min(prune_n, values.Data.size()));
+                }
 
                 static int val_ind = 0;
                 if(values.Data.Size >= 1) {
                     ImGui::SliderInt("Index", &val_ind, 0, values.Data.size());
-                    ImGui::InputFloat2("##", &values.Data[val_ind].x);
+                    ImGui::InputFloat2("##", &values.Data[val_ind].x, "%e");
                 }
             }
         }
+        ImGui::End();
     }
-    ImGui::End();
+
+    //
 }

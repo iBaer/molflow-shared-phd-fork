@@ -68,6 +68,14 @@ bool ImguiWindow::ToggleGlobalSettings(){
     show_global_settings = !show_global_settings;
     return show_global_settings;
 }
+bool ImguiWindow::ToggleAABBWindow(){
+    show_aabb = !show_aabb;
+    return show_aabb;
+}
+bool ImguiWindow::ToggleConvWindow(){
+    show_conv = !show_conv;
+    return show_conv;
+}
 // --- Toggle functions ---
 
 // Setup Dear ImGui context and various default values (font, colors etc.)

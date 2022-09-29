@@ -898,6 +898,7 @@ void Interface::OneTimeSceneInit_shared_pre() {
     menu->GetSubMenu("Test")->Add("ImGui Global Settings", MENU_IMGUI_GLOB);
     menu->GetSubMenu("Test")->Add("ImGui Sidebar", MENU_IMGUI_SIDE);
     menu->GetSubMenu("Test")->Add("ImGui ADS", MENU_IMGUI_ADS);
+    menu->GetSubMenu("Test")->Add("ImGui Conv. Plotter", MENU_IMGUI_CONV);
     menu->GetSubMenu("Test")->Add("ImGui Test Suite", MENU_IMGUI);
 
     geomNumber = new GLTextField(0, nullptr);
@@ -1887,6 +1888,15 @@ Full license text: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
                         imWnd->init();
                     }
                     imWnd->ToggleAABBWindow();
+
+                    return true;
+                }
+                case MENU_IMGUI_CONV: {
+                    if(!imWnd) {
+                        imWnd = new ImguiWindow(this);
+                        imWnd->init();
+                    }
+                    imWnd->ToggleConvWindow();
 
                     return true;
                 }

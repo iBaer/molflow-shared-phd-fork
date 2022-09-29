@@ -314,8 +314,8 @@ void ConvergencePlotter::Update(float appTime) {
         if (worker->IsRunning())
             refreshViews();
         lastUpdate = appTime;
-        shapeParamField->SetText(formula_ptr->ApproxShapeParameter());
-        shapeParamField2->SetText(formula_ptr->ApproxShapeParameter2());
+        shapeParamField->SetText(formula_ptr->ApproxShapeParameter(0, 1));
+        shapeParamField2->SetText(formula_ptr->ApproxShapeParameter(0,0));
     }
 }
 

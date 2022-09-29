@@ -48,10 +48,8 @@ public:
     bool ToggleSimSidebar();
     bool ToggleDemoWindow();
     bool ToggleGlobalSettings();
-    bool ToggleAABBWindow(){
-        show_aabb = !show_aabb;
-        return show_aabb;
-    }
+    bool ToggleAABBWindow();
+    bool ToggleConvWindow();
 protected:
     // Window states (visible or not)
     bool show_main_hub{false}; //!< Hub managing all other windows
