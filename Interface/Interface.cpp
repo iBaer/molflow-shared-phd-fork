@@ -2386,7 +2386,7 @@ void Interface::RenumberSelections(const std::vector<int> &newRefs) {
 }
 
 void Interface::RenumberFormulas(std::vector<int> *newRefs) const {
-    for (auto &f:formula_ptr->formulas_n) {
+    for (auto &f:*formula_ptr->formulas_n) {
         if (OffsetFormula(f->GetExpression(), 0, -1, newRefs)) {
             f->Parse();
         }
@@ -2824,7 +2824,7 @@ int Interface::FrameMove() {
                     GLMessageBox::Display(e.what(), "Error (Stop)", GLDLG_OK, GLDLG_ICONERROR);
                 }
                 // Simulation monitoring
-                formula_ptr->UpdateFormulaValues(hitCache.nbDesorbed);
+                //formula_ptr->UpdateFormulaValues(hitCache.nbDesorbed);
                 UpdatePlotters();
 
                 // Formulas
@@ -2852,7 +2852,7 @@ int Interface::FrameMove() {
                 }
 
                 // First sample every second, fine tune later
-                if (!formula_ptr->formulas_n.empty()) {
+                if (!formula_ptr->formulas_n->empty()) {
                     if (!convergencePlotter)
                         convergencePlotter = new ConvergencePlotter(&worker, formula_ptr);
                     if (!formulaEditor) {
@@ -2864,11 +2864,11 @@ int Interface::FrameMove() {
                         //formulaEditor->Refresh();
                         //formulaEditor->ReEvaluate();
                         convergencePlotter->Update(m_fTime);
-                        bool shouldStop = false;
+                        /*bool shouldStop = false;
                         for(int formulaId = 0; formulaId < formula_ptr->convergenceValues.size(); ++formulaId)
                             shouldStop |= formula_ptr->CheckASCBR(formulaId);
                         if(shouldStop)
-                            worker.Stop_Public();
+                            worker.Stop_Public();*/
                     }
                 }
             }
@@ -2952,7 +2952,12 @@ int Interface::FrameMove() {
 
     if(convergencePlotter && formulaEditor && formula_ptr->formulasChanged) {
         convergencePlotter->Refresh();
-        formula_ptr->formulasChanged = false;
+        for(int fid = 0; fid < formula_ptr.get()->convergenceValues.size(); fid++) {
+            formula_ptr.get()->convergenceValues[fid].shape1 = formula_ptr->ApproxShapeParameter(fid, 1);
+            formula_ptr.get()->convergenceValues[fid].shape2 = formula_ptr->ApproxShapeParameter(fid, 0);
+            formula_ptr.get()->convergenceValues[fid].conv_rate =  formula_ptr->GetConvRate(fid);
+            formula_ptr->formulasChanged = false;
+        }
     }
 
     /*

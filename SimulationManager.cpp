@@ -671,8 +671,10 @@ void SimulationManager::ForwardSimModel(const std::shared_ptr<SimulationModel>& 
 // Create hard copy for local usage and resie particle logger
 void SimulationManager::ForwardOtfParams(OntheflySimulationParams *otfParams) {
     for(auto& sim : simUnits) {
-        sim->model->otfParams = *otfParams;
+        if(sim->model)
+            sim->model->otfParams = *otfParams;
         sim->ReinitializeParticleLog();
+        sim->ReinitializeConvergenceLog();
     }
 
 }

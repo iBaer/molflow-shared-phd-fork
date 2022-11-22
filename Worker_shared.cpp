@@ -690,7 +690,9 @@ void Worker::ChangeSimuParams() { //Send simulation mode changes to subprocesses
 
         if(simManager.ShareWithSimUnits((BYTE *) loaderString.c_str(), loaderString.size(),LoadType::LOADPARAM)){
             auto errString = fmt::format("Failed to send params to sub process:\n");
-            //GLMessageBox::Display(errString.c_str(), "Warning (Updateparams)", GLDLG_OK, GLDLG_ICONWARNING);
+            //GLMessageBox::Display(errString.c_str(), "Warning
+            //
+            // (Updateparams)", GLDLG_OK, GLDLG_ICONWARNING);
 
             //progressDlg->SetVisible(false);
             //SAFE_DELETE(progressDlg);

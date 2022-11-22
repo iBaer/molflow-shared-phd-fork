@@ -31,6 +31,9 @@ Full license text: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
 
 #if defined(MOLFLOW)
 #include "../src/MolflowTypes.h" //Texture Min Max of GlobalHitBuffer, anglemapparams
+#include "GLApp/GLParser.h"
+#include "Formulas.h"
+
 #endif
 
 #if defined(SYNRAD)
@@ -428,10 +431,14 @@ public:
     bool benchmarkADS; // TODO: Tmp for finding the best ADS structure
     bool raySampling;
 
+    bool calc_convergence;
+    std::shared_ptr<Formulas> formula_ptr;
+
     size_t logFacetId, logLimit;
 
     size_t desorptionLimit;
 	size_t nbProcess; //For desorption limit / log size calculation
+    size_t batch_size;
     double	 timeLimit;
 
 	template<class Archive> void serialize(Archive& archive) {

@@ -53,7 +53,7 @@ private:
     [[nodiscard]] char *getSimStatus() const;
     void setSimState(char *msg) const;
     void setSimState(const std::string& msg) const;
-    int runSimulation(size_t desorptions);
+    int runSimulation(size_t nb_steps_max, size_t *nb_des_max, size_t desorptions);
     int advanceForTime(double simDuration);
     int advanceForSteps(size_t desorptions);
 };

@@ -119,7 +119,8 @@ void ImguiWindow::init() {
     // - Remember that in C/C++ if you want to include a backslash \ in a string
     // literal you need to write a double backslash \\ !
     // io.Fonts->AddFontDefault();
-    static const ImWchar sym_ranges[] = {0x2000, 0x3000, 0};
+    //static const ImWchar sym_ranges[] = {0x2000, 0x3000, 0}; // some symbols
+    static const ImWchar sym_ranges[] = {0x0000, 0xFFFF, 0}; // epsilon etc
     ImFontConfig sym_config;
     sym_config.MergeMode = true;
     sym_config.PixelSnapH = true;

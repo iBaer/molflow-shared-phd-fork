@@ -264,7 +264,7 @@ void ShowAppSidebar(bool *p_open, SynRad *mApp, Geometry *geom, bool *show_globa
                 static double og_area = 1.0;
 
                 if(sel) og = sel->sh.outgassing;
-                if (ImGui::Checkbox("Outgassing [mbar\u00b7l/s]", &use_og)) {
+                if (ImGui::Checkbox(u8"Outgassing [mbar\u00b7l/s]", &use_og)) {
                     use_og_area = !use_og;
                 }
                 ImGui::SameLine();
@@ -306,12 +306,12 @@ void ShowAppSidebar(bool *p_open, SynRad *mApp, Geometry *geom, bool *show_globa
 #if defined(MOLFLOW)
                 static double temp = 1.0;
                 if(sel) temp = sel->sh.temperature;
-                ImGui::InputRightSide("Temperature [\u00b0\u212a]", &temp);
+                ImGui::InputRightSide(u8"Temperature [\u00b0\u212a]", &temp);
 #endif
 
                 static double area = 1.0;
                 if(sel) area = sel->sh.area;
-                ImGui::InputRightSide("Area [cm\u00b2]", &area);
+                ImGui::InputRightSide(u8"Area [cm\u00b2]", &area);
 
                 static int prof_idx = 0;
                 if(sel) prof_idx = sel->sh.profileType;

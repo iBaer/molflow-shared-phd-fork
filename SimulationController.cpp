@@ -125,6 +125,12 @@ int SimThread::advanceForTime(double simDuration) {
  */
 
 bool SimThread::runLoop() {
+    enum EoS : int {
+        CONT,
+        STOP,
+        HALT
+    };
+
     bool eos;
     bool lastUpdateOk = false;
 
@@ -133,11 +139,19 @@ bool SimThread::runLoop() {
     double timeStart = omp_get_wtime();
     double timeLoopStart = timeStart;
     double timeEnd;
+
+    const size_t batch_size = particle->model->otfParams.batch_size / particle->model->otfParams.nbProcess;
+    size_t current_batch = batch_size;
     do {
         setSimState(getSimStatus());
         size_t desorptions = localDesLimit;//(localDesLimit > 0 && localDesLimit > particle->tmpState.globalHits.globalHits.hit.nbDesorbed) ? localDesLimit - particle->tmpState.globalHits.globalHits.hit.nbDesorbed : 0;
         //printf("Pre[%zu] %lu + %lu / %lu\n",threadNum, desorptions, particle->tmpState.globalHits.globalHits.hit.nbDesorbed, localDesLimit);
-        simEos = runSimulation(desorptions);      // Run during 1 sec
+
+        // 1s step
+        size_t nbStep = (stepsPerSec <= 0.0) ? 250.0 : std::ceil(stepsPerSec + 0.5);
+        int res = runSimulation(nbStep, &current_batch, desorptions);      // Run during 1 sec
+        simEos = (res != CONT) ? true : false;
+
         //printf("Pos[%zu][%d] %lu + %lu / %lu\n",threadNum, simEos, desorptions, particle->tmpState.globalHits.globalHits.hit.nbDesorbed, localDesLimit);
 
         timeEnd = omp_get_wtime();
@@ -167,8 +181,33 @@ bool SimThread::runLoop() {
         else{
             lastUpdateOk = false;
         }
+
+        if(current_batch == 0) {
+            current_batch = batch_size;
+
+            if (!lastUpdateOk) {
+                //printf("[%zu] Updating on finish!\n",threadNum);
+                setSimState("Final update...");
+                particle->UpdateHits(simulation->globState, simulation->globParticleLog,
+                                     20000); // Update hit with 20ms timeout. If fails, probably an other subprocess is updating, so we'll keep calculating and try it later (latest when the simulation is stopped).)
+            }
+
+            if(res == HALT && desorptions <= 0)
+                simEos = false;
+#pragma omp barrier
+            // Synchronise, save convergence results and restart
+#pragma omp single
+            {
+                simulation->FetchConvValues();
+                if(simulation->model->otfParams.formula_ptr->CheckConvergence()){
+                    simulation->isConverged = true;
+                }
+            }
+
+
+        }
         //printf("[%zu] PUP: %lu , %lu , %lu\n",threadNum, desorptions,localDesLimit, particle->tmpState.globalHits.globalHits.hit.nbDesorbed);
-        eos = simEos || (this->particle->model->otfParams.timeLimit != 0 ? timeEnd-timeStart >= this->particle->model->otfParams.timeLimit : false) || (procInfo->masterCmd != COMMAND_START) || (procInfo->subProcInfo[threadNum].slaveState == PROCESS_ERROR);
+        eos = simEos || simulation->IsConverged() ||  (this->particle->model->otfParams.timeLimit != 0 ? timeEnd-timeStart >= this->particle->model->otfParams.timeLimit : false) || (procInfo->masterCmd != COMMAND_START) || (procInfo->subProcInfo[threadNum].slaveState == PROCESS_ERROR);
     } while (!eos);
 
     procInfo->RemoveAsActive(threadNum);
@@ -211,26 +250,30 @@ void SimThread::setSimState(const std::string& msg) const {
 
 /**
 * \brief A "single (1sec)" MC step of a simulation run for a given thread
- * \return 0 when simulation continues, 1 when desorption limit is reached
+ * \return 0 when simulation continues, 1 when desorption limit is reached, 2 on sync
  */
-int SimThread::runSimulation(size_t desorptions) {
-    // 1s step
-    size_t nbStep = (stepsPerSec <= 0.0) ? 250.0 : std::ceil(stepsPerSec + 0.5);
+int SimThread::runSimulation(size_t nb_steps_max, size_t *nb_des_max, size_t desorptions) {
+
+    enum EoS : int {
+        CONT,
+        STOP,
+        HALT
+    };
 
     {
         char msg[128];
-        snprintf(msg, 128, "%s [%zu event/s]", getSimStatus(), nbStep);
+        snprintf(msg, 128, "%s [%zu event/s]", getSimStatus(), nb_steps_max);
         setSimState(msg);
     }
 
     // Check end of simulation
-    bool goOn = true;
+    int eos = CONT;
     size_t remainingDes = 0;
 
     if (particle->model->otfParams.desorptionLimit > 0) {
         if (desorptions <= particle->tmpState.globalHits.globalHits.nbDesorbed){
             //lastHitFacet = nullptr; // reset full particle status or go on from where we left
-            goOn = false;
+            eos = STOP;
         }
         else {
             //if(particle->tmpState.globalHits.globalHits.hit.nbDesorbed <= (particle->model->otfParams.desorptionLimit - simulation->globState->globalHits.globalHits.hit.nbDesorbed)/ particle->model->otfParams.nbProcess)
@@ -238,28 +281,37 @@ int SimThread::runSimulation(size_t desorptions) {
         }
     }
     //auto start_time = std::chrono::high_resolution_clock::now();
-    if(goOn) {
+    if(eos == CONT) {
+
+        auto des_cache = particle->tmpState.globalHits.globalHits.nbDesorbed;
         double start_time = omp_get_wtime();
-        goOn = particle->SimulationMCStep(nbStep, threadNum, remainingDes);
+        //fmt::print("Sim start with Steps {} and Des: {} : {}\n", nb_steps_max, *nb_des_max, *nb_des_max > remainingDes ? *nb_des_max : remainingDes);
+
+        bool res = particle->SimulationMCStep(nb_steps_max, threadNum, *nb_des_max > remainingDes ? *nb_des_max : remainingDes);
+        eos = (res) ? CONT : (*nb_des_max > remainingDes ? HALT : STOP);
         double end_time = omp_get_wtime();
 
+        if(*nb_des_max) {
+            //fmt::print("Des: {} : {}\n", *nb_des_max, particle->tmpState.globalHits.globalHits.nbDesorbed-des_cache);
+            *nb_des_max -= std::min(*nb_des_max, particle->tmpState.globalHits.globalHits.nbDesorbed - des_cache);
+        }
     //auto end_time = std::chrono::high_resolution_clock::now();
 
 
-        if (goOn) // don't update on end, this will give a false ratio (SimMCStep could return actual steps instead of plain "false"
+        if (res) // don't update on end, this will give a false ratio (SimMCStep could return actual steps instead of plain "false"
         {
             const double elapsedTimeMs = (end_time - start_time); //std::chrono::duration<float, std::ratio<1, 1>>(end_time - start_time).count();
             if (elapsedTimeMs != 0.0)
-                stepsPerSec = (1.0 * nbStep) / (elapsedTimeMs); // every 1.0 second
+                stepsPerSec = (1.0 * nb_steps_max) / (elapsedTimeMs); // every 1.0 second
             else
-                stepsPerSec = (100.0 * nbStep); // in case of fast initial run
+                stepsPerSec = (100.0 * nb_steps_max); // in case of fast initial run
         }
     }
 #if defined(_DEBUG)
     //printf("Running: stepPerSec = %lf [%lu]\n", stepsPerSec, threadNum);
 #endif
 
-    return !goOn;
+    return eos;
 }
 
 SimulationController::SimulationController(size_t parentPID, size_t procIdx, size_t nbThreads,

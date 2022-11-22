@@ -165,6 +165,9 @@ public:
 #endif
     bool   IsRunning();           // Started/Stopped state
 
+
+    // Process management
+    SimulationManager simManager;
   // Global simulation parameters
   std::shared_ptr<SimulationModel> model;
   FacetHistogramBuffer globalHistogramCache;
@@ -206,9 +209,6 @@ public:
 #endif
 
 private:
-
-  // Process management
-  SimulationManager simManager;
 
 
   // Methods

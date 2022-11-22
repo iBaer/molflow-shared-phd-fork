@@ -26,16 +26,30 @@ Full license text: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
 #include "GLApp/GLParser.h"
 #include "FormulaEvaluator.h"
 
+struct ASCBRData {
+    ASCBRData() : start_pos(0), end_pos(0), upper_bound(0.0), lower_bound(0.0), chain_length(0), passed(false) {};
+    double start_pos; //x_start
+    double end_pos; // x_end
+    double upper_bound; // y_high
+    double lower_bound; // y_low
+    size_t chain_length;
+    bool passed;
+};
+
 struct ConvergenceData {
-    ConvergenceData() : conv_total(0.0), n_samples(0), upper_bound(0.0), lower_bound(0.0), chain_length(0) {};
+    ConvergenceData() : conv_total(0.0), n_samples(0), is_converged(false){};
+
+    int Append(const std::pair<size_t,double>& p);
+    int CheckConvergence();
     std::vector<std::pair<size_t,double>> conv_vec;
     double conv_total; /* for now unused accumulator, where convegence values are summed up */
     size_t n_samples;
-
+    bool is_converged;
     // ASCBR values
-    double upper_bound;
-    double lower_bound;
-    size_t chain_length;
+    std::vector<ASCBRData> bands;
+    double shape1;
+    double shape2;
+    double conv_rate;
 };
 
 //! Defines a formula object that can be used to retrieve and store a parsed result
@@ -43,9 +57,10 @@ struct Formulas {
 
     Formulas(FormulaEvaluator* eval) : formulasChanged(true), sampleConvValues(true), epsilon(5), cb_length(51), useAbsEps(true){
         evaluator=eval;
+        formulas_n = std::make_shared<std::vector<GLParser*>>();
     };
     ~Formulas(){
-        for(auto f : formulas_n){
+        for(auto f : *formulas_n){
             SAFE_DELETE(f);
         }
         delete evaluator;
@@ -53,6 +68,7 @@ struct Formulas {
 
     void AddFormula(const char *fName, const char *formula);
     void ClearFormulas();
+    void ClearRuntimeStats();
 
     void UpdateVectorSize();
     bool InitializeFormulas();
@@ -61,12 +77,13 @@ struct Formulas {
     double GetConvRate(int formulaId);
     void RestartASCBR(int formulaId);
     bool CheckASCBR(int formulaId);
+    int CheckConvergence();
     double ApproxShapeParameter(int formulaId, int index_from);
-
+    ASCBRData * GetLastBand(int formulaId);
     void pruneEveryN(size_t everyN, int formulaId, size_t skipLastN);
     void pruneFirstN(size_t n, int formulaId);
 
-    std::vector<GLParser*> formulas_n;
+    std::shared_ptr<std::vector<GLParser*>> formulas_n;
     std::vector<std::pair<size_t,double>> lastFormulaValues;
     std::vector<ConvergenceData> convergenceValues; // One vector of nbDesorption,formulaValue pairs for each formula
     std::vector<std::vector<size_t>> freq_accum;

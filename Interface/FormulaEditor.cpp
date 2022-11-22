@@ -160,7 +160,7 @@ void FormulaEditor::ProcessMessage(GLComponent *src, int message) {
 				DEBUG_BREAK;
 				return;
 			}
-			std::swap(formula_ptr->formulas_n.at(selRow), formula_ptr->formulas_n.at(selRow - 1));
+			std::swap(formula_ptr->formulas_n->at(selRow), formula_ptr->formulas_n->at(selRow - 1));
             std::swap(formula_ptr->convergenceValues[selRow], formula_ptr->convergenceValues[selRow - 1]);
             std::swap(formula_ptr->lastFormulaValues[selRow], formula_ptr->lastFormulaValues[selRow - 1]);
             formulaList->SetSelectedRow(selRow - 1);
@@ -169,12 +169,12 @@ void FormulaEditor::ProcessMessage(GLComponent *src, int message) {
 		}
 		else if (src == moveDownButton) {
 			int selRow = formulaList->GetSelectedRow();
-			if (selRow > formula_ptr->formulas_n.size() - 2) {
+			if (selRow > formula_ptr->formulas_n->size() - 2) {
 				//Interface bug
 				DEBUG_BREAK;
 				return;
 			}
-			std::swap(formula_ptr->formulas_n.at(selRow), formula_ptr->formulas_n.at(selRow + 1));
+			std::swap(formula_ptr->formulas_n->at(selRow), formula_ptr->formulas_n->at(selRow + 1));
             std::swap(formula_ptr->convergenceValues[selRow], formula_ptr->convergenceValues[selRow + 1]);
             std::swap(formula_ptr->lastFormulaValues[selRow], formula_ptr->lastFormulaValues[selRow + 1]);
             formulaList->SetSelectedRow(selRow + 1);
@@ -193,21 +193,21 @@ void FormulaEditor::ProcessMessage(GLComponent *src, int message) {
 		for (size_t row = 0; row < (formulaList->GetNbRow() - 1); row++) { //regular lines
 
 			if (strcmp(formulaList->GetValueAt(0, row), userExpressions[row].c_str()) != 0) { //Expression changed
-				if (row >= formula_ptr->formulas_n.size()) {
+				if (row >= formula_ptr->formulas_n->size()) {
 					//Interface bug
 					DEBUG_BREAK;
 					return;
 				}
 				if (*(formulaList->GetValueAt(0, row)) != 0 || *(formulaList->GetValueAt(1, row)) != 0) //Name or expr. not empty
 				{
-                    formula_ptr->formulas_n.at(row)->SetExpression(formulaList->GetValueAt(0, row));
-                    formula_ptr->formulas_n.at(row)->Parse();
+                    formula_ptr->formulas_n->at(row)->SetExpression(formulaList->GetValueAt(0, row));
+                    formula_ptr->formulas_n->at(row)->Parse();
 					Refresh();
 				}
 				else
 				{
-					SAFE_DELETE(formula_ptr->formulas_n.at(row));
-                    formula_ptr->formulas_n.erase(formula_ptr->formulas_n.begin() + row);
+					SAFE_DELETE(formula_ptr->formulas_n->at(row));
+                    formula_ptr->formulas_n->erase(formula_ptr->formulas_n->begin() + row);
                     formula_ptr->UpdateVectorSize();
 					Refresh();
 				}
@@ -218,13 +218,13 @@ void FormulaEditor::ProcessMessage(GLComponent *src, int message) {
 			if (strcmp(formulaList->GetValueAt(1, row), userFormulaNames[row].c_str()) != 0) { //Name changed
 				if (*(formulaList->GetValueAt(0, row)) != 0 || *(formulaList->GetValueAt(1, row)) != 0) //Name or expr. not empty
 				{
-					formula_ptr->formulas_n.at(row)->SetName(formulaList->GetValueAt(1, row));
+					formula_ptr->formulas_n->at(row)->SetName(formulaList->GetValueAt(1, row));
 					Refresh();
 				}
 				else
 				{
-					SAFE_DELETE(formula_ptr->formulas_n.at(row));
-					formula_ptr->formulas_n.erase(formula_ptr->formulas_n.begin() + row);
+					SAFE_DELETE(formula_ptr->formulas_n->at(row));
+					formula_ptr->formulas_n->erase(formula_ptr->formulas_n->begin() + row);
                     formula_ptr->UpdateVectorSize();
                     Refresh();
 				}
@@ -336,12 +336,12 @@ void FormulaEditor::RebuildList() {
 
 void FormulaEditor::Refresh() {
 	//Load contents of window from global (interface/app) formulas
-	size_t nbFormula = formula_ptr->formulas_n.size();
+	size_t nbFormula = formula_ptr->formulas_n->size();
 	userExpressions.resize(nbFormula);
 	userFormulaNames.resize(nbFormula);
 	for (size_t i = 0; i < nbFormula; i++) {
-		userExpressions[i] = formula_ptr->formulas_n.at(i)->GetExpression();
-		userFormulaNames[i] = formula_ptr->formulas_n.at(i)->GetName();
+		userExpressions[i] = formula_ptr->formulas_n->at(i)->GetExpression();
+		userFormulaNames[i] = formula_ptr->formulas_n->at(i)->GetName();
 	}
 	RebuildList();
     formula_ptr->formulasChanged = true;
@@ -353,9 +353,9 @@ void FormulaEditor::UpdateValues() {
 	//       NEW CODE
 
 	// Formulas should be updated beforehand
-	for (size_t i = 0; i < formula_ptr->formulas_n.size(); i++) {
+	for (size_t i = 0; i < formula_ptr->formulas_n->size(); i++) {
 		// Evaluation
-		if (!formula_ptr->formulas_n.at(i)->hasVariableEvalError) { //Variables succesfully evaluated
+		if (!formula_ptr->formulas_n->at(i)->hasVariableEvalError) { //Variables succesfully evaluated
             double r = formula_ptr->lastFormulaValues[i].second;
             std::stringstream tmp;
             tmp << r;
@@ -367,7 +367,7 @@ void FormulaEditor::UpdateValues() {
 		}
 		else { //Error while evaluating variables
 		    //formulas[i].value->SetText("Invalid variable name"); //We set it directly at the error location
-            formulaList->SetValueAt(2, i, formula_ptr->formulas_n.at(i)->GetErrorMsg());
+            formulaList->SetValueAt(2, i, formula_ptr->formulas_n->at(i)->GetErrorMsg());
         }
 	}
 }

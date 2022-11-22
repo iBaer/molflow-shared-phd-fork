@@ -27,6 +27,7 @@ Full license text: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
 class SimulationModel;
 class GlobalSimuState;
 struct ParticleLog;
+struct ConvergenceData;
 
 namespace MFSim {
     class Particle;
@@ -53,6 +54,9 @@ public:
     virtual int RebuildAccelStructure() = 0;
 
     virtual int ReinitializeParticleLog() = 0;
+    virtual int ReinitializeConvergenceLog() = 0;
+    virtual int FetchConvValues() = 0;
+    virtual int IsConverged() = 0;
     virtual std::pair<int, std::optional<std::string>> SanityCheckModel(bool strictCheck) = 0;
 
     virtual void ResetSimulation() = 0;
@@ -71,8 +75,11 @@ public:
     // Particle coordinates (MC)
     GlobalSimuState* globState;
     ParticleLog* globParticleLog; //Recorded particle log since last UpdateMCHits
+    std::vector<ConvergenceData> convergenceValues; // One vector of nbDesorption,formulaValue pairs for each formula
+
     //GlobalSimuState tmpResults;
 
+    bool isConverged{false};
     size_t totalDesorbed; // todo: should be a "sim counter"
     std::timed_mutex m;
 
