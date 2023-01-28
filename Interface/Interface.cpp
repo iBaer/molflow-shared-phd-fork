@@ -491,7 +491,6 @@ void Interface::UpdateModelParams() {
     sprintf(tmp, "V:%zd F:%zd Dim:(%g,%g,%g) Area:%g", geom->GetNbVertex(), geom->GetNbFacet(),
             (bb.max.x - bb.min.x), (bb.max.y - bb.min.y), (bb.max.z - bb.min.z), sumArea);
     geomNumber->SetText(tmp);
-
 }
 
 void Interface::AnimateViewerChange(int next) {

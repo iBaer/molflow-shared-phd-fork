@@ -84,13 +84,15 @@ struct OverlappingEdge {
 class NeighborScan {
 public:
 
-    static int GetAnalysedCommonEdges(std::vector<Facet *> facets, std::vector<CommonEdge> &commonEdges);
-    static int GetAnalysedUnorientedCommonEdges(std::vector<Facet *> facets, std::vector<CommonEdge> &commonEdges);
-    static int GetAnalysedOverlappingEdges(std::vector<Facet *> facets, const std::vector<Vector3d> &vectors, std::vector<OverlappingEdge> &commonEdges);
-    static int GetCommonEdgesList(std::vector<Facet *> facets, std::vector<CommonEdge> &commonEdges);
-    static int GetUnorientedCommonEdgesList(std::vector<Facet *> facets, std::vector<CommonEdge> &commonEdges);
-    static int GetOverlappingEdges(std::vector<Facet *> facets, const std::vector<Vector3d> &vectors,
+    static int GetAnalysedCommonEdges(const std::vector<Facet *>& facets, std::vector<CommonEdge> &commonEdges);
+    static int GetAnalysedUnorientedCommonEdges(const std::vector<Facet *>& facets, std::vector<CommonEdge> &commonEdges);
+    static int GetAnalysedOverlappingEdges(const std::vector<Facet *> &facets, const std::vector<Vector3d> &vectors, std::vector<OverlappingEdge> &commonEdges);
+    static int GetCommonEdgesList(const std::vector<Facet *> &facets, std::vector<CommonEdge> &commonEdges);
+    static int GetUnorientedCommonEdgesList(const std::vector<Facet *>& facets, std::vector<CommonEdge> &commonEdges);
+    static int GetOverlappingEdges(const std::vector<Facet *> &facets, const std::vector<Vector3d> &vectors,
                                    std::vector<OverlappingEdge> &overlappingEdges);
+
+    static int CompareOverlap(std::vector<OverlappingEdge>& edges_overlap, std::vector<CommonEdge>& edges_un);
 };
 
 int RemoveDuplicates(std::vector<CommonEdge>& edge_v);
