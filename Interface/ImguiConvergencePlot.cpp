@@ -315,12 +315,15 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
                         else if(plot_limit_y == 2)
                             ImPlot::SetupAxisLimits(ImAxis_Y1, xmean - 2.0f * dist_to_mean, xmean +  2.0f * dist_to_mean, ImPlotCond_Always);
                         else if(plot_ascbr && plot_limit_y == 3 && !ascbr_lower.Data.empty()) {
-                            ImPlot::SetupAxisLimits(ImAxis_Y1, ascbr_lower.GetLast().y - dist_to_mean,
-                                                    ascbr_upper.GetLast().y + dist_to_mean, ImPlotCond_Always);
+                            double l_val = ascbr_lower.Data.empty() ? 0.0 : ascbr_lower.GetLast().y;
+                            double u_val = ascbr_upper.Data.empty() ? 0.0 : ascbr_upper.GetLast().y;
+                            ImPlot::SetupAxisLimits(ImAxis_Y1, xmean - (fabs(l_val - xmean)),
+                                                    xmean + (fabs(u_val - xmean)), ImPlotCond_Always);
                         }
                         if(plot_limit_x == 1) {
+                            double front_val = values.Data.empty() ? 0.0 : values.GetFirst().x;
                             double back_val = values.Data.empty() ? 0.0 : values.GetLast().x;
-                            ImPlot::SetupAxisLimits(ImAxis_X1, std::max(0.0, back_val - 10.0 * cb_len * batch_size),
+                            ImPlot::SetupAxisLimits(ImAxis_X1, std::max(front_val, back_val - 1.0 * cb_len * batch_size),
                                                     back_val, ImPlotCond_Always);
                         }
                         else {
