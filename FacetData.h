@@ -66,7 +66,7 @@ struct TriangleFacet : public GeomPrimitive {
     TriangleFacet() : GeomPrimitive(3){ };
     virtual ~TriangleFacet() { }
     std::vector<Vector3d>* vertices3;        // Vertices (2D plane space, UV coordinates)
-    Vector2d* texCoord;
+    Vector2d texCoord[3];
 
     //size_t iSCount{0};
 

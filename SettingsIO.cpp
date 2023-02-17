@@ -37,7 +37,7 @@ namespace SettingsIO {
         return 0;
     }
 
-// In
+//! Set all directory / output related variables and initialises directories depending on set parameters
     int initDirectories() {
 
         int err = 0;
@@ -50,18 +50,26 @@ namespace SettingsIO {
         // Overwrite excludes outputpath/filename
         if (SettingsIO::overwrite) {
             SettingsIO::outputFile = SettingsIO::inputFile;
-            SettingsIO::workPath = "tmp/";
+            std::string tmpFolder = MFMPI::world_size > 1 ? std::string("tmp{}/",MFMPI::world_rank) : "tmp/";
+            SettingsIO::workPath = tmpFolder;
+        } else if(!SettingsIO::outputPath.empty()){
+            SettingsIO::workPath = SettingsIO::outputPath;
+        }
+        else if (SettingsIO::outputPath.empty() && std::filesystem::path(SettingsIO::outputFile).has_parent_path()) { // Use a default outputpath if unset
+            SettingsIO::workPath =
+                    std::filesystem::path(SettingsIO::outputFile).parent_path().string();
         } else if (SettingsIO::outputPath
                 .empty()) { // Use a default outputpath if unset
             SettingsIO::outputPath = "Results_" + Util::getTimepointString();
             SettingsIO::workPath = SettingsIO::outputPath;
-        } else if (std::filesystem::path(SettingsIO::outputFile).has_parent_path()) {
+        }
+        else if (std::filesystem::path(SettingsIO::outputFile).has_parent_path()) {
             Log::console_error(
                     "Output path was set to %s, but Output file also contains a parent "
                     "path %s\n"
                     "Output path will be appended!\n",
                     SettingsIO::outputPath.c_str(),
-                    std::filesystem::path(SettingsIO::outputFile).parent_path().c_str());
+                    std::filesystem::path(SettingsIO::outputFile).parent_path().string().c_str());
         }
 
         // Use a default outputfile name if unset
@@ -79,10 +87,7 @@ namespace SettingsIO {
         }
         if (!formatIsSupported) {
             Log::console_error("File format is not supported: %s\n",
-                               std::filesystem::path(SettingsIO::outputFile)
-                                       .extension()
-                                       .string()
-                                       .c_str());
+                               std::filesystem::path(SettingsIO::outputFile).extension().string().c_str());
             return 1;
         }
 
@@ -91,18 +96,20 @@ namespace SettingsIO {
         try {
             if (!std::filesystem::exists(SettingsIO::workPath))
                 std::filesystem::create_directory(SettingsIO::workPath);
-        } catch (std::exception &e) {
+        } catch (const std::exception &e) {
             Log::console_error("Couldn't create directory [ %s ], falling back to "
                                "tmp folder for output files\n",
                                SettingsIO::workPath.c_str());
             ++err;
 
             // use fallback dir
-            SettingsIO::workPath = "tmp/";
+            SettingsIO::workPath = MFMPI::world_size > 1 ? std::string("tmp{}/",MFMPI::world_rank) : "tmp/";
+            SettingsIO::outputPath = SettingsIO::workPath;
+
             try {
                 if (!std::filesystem::exists(SettingsIO::workPath))
                     std::filesystem::create_directory(SettingsIO::workPath);
-            } catch (std::exception &e) {
+            } catch (const std::exception &e) {
                 SettingsIO::workPath = "./";
                 Log::console_error("Couldn't create fallback directory [ tmp/ ], falling "
                                    "back to binary folder instead for output files\n");
@@ -113,16 +120,21 @@ namespace SettingsIO {
         // Next check if outputfile name has parent path as name
         // Additional directory in outputpath
         if (std::filesystem::path(SettingsIO::outputFile).has_parent_path()) {
-            std::string outputFilePath =
-                    std::filesystem::path(SettingsIO::outputPath)
-                            .append(std::filesystem::path(SettingsIO::outputFile)
-                                            .parent_path()
-                                            .string())
-                            .string();
+            std::string outputFilePath;
+            if(SettingsIO::outputPath.empty())
+                outputFilePath =
+                        std::filesystem::path(SettingsIO::outputFile).parent_path().string();
+            else
+                outputFilePath =
+                        std::filesystem::path(SettingsIO::outputPath)
+                                .append(std::filesystem::path(SettingsIO::outputFile)
+                                                .parent_path()
+                                                .string())
+                                .string();
             try {
                 if (!std::filesystem::exists(outputFilePath))
                     std::filesystem::create_directory(outputFilePath);
-            } catch (std::exception &e) {
+            } catch (const std::exception &e) {
                 Log::console_error(
                         "Couldn't create parent directory set by output filename [ %s ], "
                         "will only use default output path instead\n",

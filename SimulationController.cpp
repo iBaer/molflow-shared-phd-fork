@@ -522,7 +522,7 @@ bool SimulationController::Load() {
             double randomCounter = 0;
 #pragma omp parallel default(none) shared(randomCounter)
             {
-                double local_result;
+                double local_result = 0;
 #pragma omp for
                 for (int i=0; i < 1000; i++) {
                     local_result += 1;

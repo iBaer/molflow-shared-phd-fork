@@ -191,11 +191,11 @@ Vector2d getHitLocation_old(const FacetProperties& poly, const Vector3d& rayOrig
             det = poly.U.z * poly.V.x - poly.U.x * poly.V.z;
             detU = b.z * poly.V.x - b.x * poly.V.z;
             detV = poly.U.z * b.x - poly.U.x * b.z;
-/*#ifdef DEBUG
-            if(fabsf(det)<=EPS32){
+#ifdef DEBUG
+            if(fabsf(det)<=std::numeric_limits<float>::epsilon()){
                 printf("[HitLoc] Dangerous determinant calculated: %e : %e : %e -> %e : %e\n",det,detU,detV,detU/det,detV/det);
             }
-#endif*/
+#endif
         }
     }
 
@@ -329,8 +329,8 @@ bool TriangleFacet::Intersect(Ray &ray) {
                 ray.hits.emplace_back(globalId, SubProcessFacetTempVar());
                 auto& hit = ray.hits.back().hit;
                 hit.isHit = true;
-                //auto coord = getHitLocation(b0,b1,b2,new Vector2d{}, 0);
-                auto coord = getHitLocation_old(sh, ray.origin);
+                auto coord = getHitLocation(b0,b1,b2,this->texCoord, 0);
+                //auto coord = getHitLocation_old(sh, ray.origin);
                 hit.colU = coord.u;
                 hit.colV = coord.v;
                 hit.colDistTranspPass = t;
@@ -342,8 +342,8 @@ bool TriangleFacet::Intersect(Ray &ray) {
             ray.hits.emplace_back(globalId, SubProcessFacetTempVar());
             auto& hit = ray.hits.back().hit;
             hit.isHit = false;
-            //auto coord = getHitLocation(b0,b1,b2,new Vector2d{}, 0);
-            auto coord = getHitLocation_old(sh, ray.origin);
+            auto coord = getHitLocation(b0,b1,b2,this->texCoord, 0);
+            //auto coord = getHitLocation_old(sh, ray.origin);
             hit.colU = coord.u;
             hit.colV = coord.v;
             hit.colDistTranspPass = t;

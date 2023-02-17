@@ -253,8 +253,14 @@ int main(int argc, char** argv) {
         }
         else if(!SettingsIO::overwrite){
             // Copy full file description first, in case outputFile is different
-            std::filesystem::copy_file(SettingsIO::workFile, fullOutFile,
-                                       std::filesystem::copy_options::overwrite_existing);
+            if(!SettingsIO::workFile.empty() && std::filesystem::exists(SettingsIO::workFile)){
+                try {
+                    std::filesystem::copy_file(SettingsIO::workFile, fullOutFile,
+                                               std::filesystem::copy_options::overwrite_existing);
+                } catch (std::filesystem::filesystem_error &e) {
+                    Log::console_error("Could not copy file to preserve initial file layout: %s\n", e.what());
+                }
+            }
         }
         FlowIO::WriterXML writer;
         pugi::xml_document newDoc;
@@ -266,22 +272,22 @@ int main(int argc, char** argv) {
             Log::console_msg_master(3, "Compressing xml to zip...\n");
 
             //Zipper library
-            std::string fileNameWithZIP = std::filesystem::path(SettingsIO::workFile).replace_extension(".zip").string();
+            std::string fileNameWithZIP = std::filesystem::path(fullOutFile).replace_extension(".zip").string();
             if (std::filesystem::exists(fileNameWithZIP)) { // should be workFile == inputFile
                 try {
                     std::filesystem::remove(fileNameWithZIP);
                 }
                 catch (std::exception &e) {
-                    Log::console_error("Error compressing to \n%s\nMaybe file is in use.\n",fileNameWithZIP.c_str());
+                    Log::console_error("Error compressing to \n{}\nMaybe file is in use:\n{}",fileNameWithZIP, e.what());
                 }
             }
             ZipFile::AddFile(fileNameWithZIP, fullOutFile, FileUtils::GetFilename(fullOutFile));
             //At this point, if no error was thrown, the compression is successful
             try {
-                std::filesystem::remove(SettingsIO::workFile);
+                std::filesystem::remove(fullOutFile);
             }
             catch (std::exception &e) {
-                Log::console_error("Error removing\n%s\nMaybe file is in use.\n",SettingsIO::workFile.c_str());
+                Log::console_error("Error removing\n{}\nMaybe file is in use:\n{}",fullOutFile,e.what());
             }
         }
     }
