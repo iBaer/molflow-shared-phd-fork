@@ -324,7 +324,7 @@ int SimulationManager::WaitForProcStatus(const uint8_t procStatus) {
     const int waitAmount = 250;
     int prevIncTime = 0; // save last time a wait increment has been set; allows for a dynamic/reasonable increase
     int waitTime = 0;
-    int timeOutAt = 10000; // 10 sec; max time for an idle operation to timeout
+    int timeOutAt = 40000; // 10 sec; max time for an idle operation to timeout
     allProcsDone = true;
     hasErrorStatus = false;
 
@@ -410,19 +410,19 @@ int SimulationManager::ExecuteAndWait(const int command, const uint8_t procStatu
 }
 
 int SimulationManager::KillAllSimUnits() {
-    if( !simHandles.empty() ) {
-        if(ExecuteAndWait(COMMAND_EXIT, PROCESS_KILLED)){ // execute
+    if (!simHandles.empty()) {
+        if (ExecuteAndWait(COMMAND_EXIT, PROCESS_KILLED)) { // execute
             // Force kill
-            for(auto& con : simController)
+            for (auto& con : simController)
                 con.EmergencyExit();
-            if(ExecuteAndWait(COMMAND_EXIT, PROCESS_KILLED)) {
+            if (ExecuteAndWait(COMMAND_EXIT, PROCESS_KILLED)) {
                 int i = 0;
                 for (auto tIter = simHandles.begin(); tIter != simHandles.end(); ++i) {
                     if (procInformation.subProcInfo[i].slaveState != PROCESS_KILLED) {
                         auto nativeHandle = simHandles[i].first.native_handle();
 #if defined(_WIN32) && defined(_MSC_VER)
                         //Windows
-                        TerminateThread(nativeHandle, 1);
+                        //TerminateThread(nativeHandle, 1);
 #else
                         //Linux
                         int s;
@@ -435,7 +435,7 @@ int SimulationManager::KillAllSimUnits() {
                         try {
                             tIter = simHandles.erase(tIter);
                         }
-                        catch (const std::exception &e) {
+                        catch (const std::exception& e) {
                             char tmp[512];
                             snprintf(tmp, 512, "Could not terminate sub processes: %s\n", e.what());
                             throw std::runtime_error(tmp); // proc couldn't be killed!?
@@ -450,21 +450,23 @@ int SimulationManager::KillAllSimUnits() {
             }
         }
 
-        for(size_t i=0;i<simHandles.size();i++) {
-            if (procInformation.subProcInfo[i].slaveState == PROCESS_KILLED) {
-                simHandles[i].first.join();
+        // Join all threads before clearing the list
+        int i = 0;
+        for (auto& t : simHandles) {
+            if (procInformation.subProcInfo[i++].slaveState == PROCESS_KILLED) {
+                t.first.join();
             }
-            else{
-                if(ExecuteAndWait(COMMAND_EXIT, PROCESS_KILLED))
+            else {
+                if (ExecuteAndWait(COMMAND_EXIT, PROCESS_KILLED))
                     exit(1);
-/*                auto nativeHandle = simHandles[i].first.native_handle();
+                auto nativeHandle = t.first.native_handle();
 #if defined(_WIN32) && defined(_MSC_VER)
                 //Windows
-                TerminateThread(nativeHandle, 1);
+                //TerminateThread(nativeHandle, 1);
 #else
                 //Linux
-                pthread_cancel(nativeHandle);
-#endif*/
+                //pthread_cancel(nativeHandle); // TODO: Causes crash?
+#endif
             }
         }
         simHandles.clear();
@@ -472,6 +474,7 @@ int SimulationManager::KillAllSimUnits() {
     nbThreads = 0;
     return 0;
 }
+
 
 int SimulationManager::ResetSimulations() {
     if(interactiveMode) {

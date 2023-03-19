@@ -194,16 +194,25 @@ bool SimThread::runLoop() {
 
             if(res == HALT && desorptions <= 0)
                 simEos = false;
-#pragma omp barrier
-            // Synchronise, save convergence results and restart
-#pragma omp single
-            {
-                simulation->FetchConvValues();
-                if(simulation->model->otfParams.formula_ptr->CheckConvergence()){
-                    simulation->isConverged = true;
-                }
-            }
 
+#pragma omp atomic
+            procInfo->counting_barrier++;
+
+            /*while(procInfo->counting_barrier != procInfo->subProcInfo.size()) {
+//#pragma omp flush(procInfo->counting_barrier)
+                Sleep(1000); // sleep for 1 millisecond
+            }*/
+                // Synchronise, save convergence results and restart
+
+            if(procInfo->activeProcs.front() == threadNum) {
+                    simulation->FetchConvValues();
+                    if (simulation->model->otfParams.formula_ptr &&
+                        simulation->model->otfParams.formula_ptr->CheckConvergence()) {
+                        simulation->isConverged = true;
+                    }
+            }
+#pragma omp atomic
+            procInfo->counting_barrier--;
 
         }
         //printf("[%zu] PUP: %lu , %lu , %lu\n",threadNum, desorptions,localDesLimit, particle->tmpState.globalHits.globalHits.hit.nbDesorbed);
@@ -211,6 +220,9 @@ bool SimThread::runLoop() {
     } while (!eos);
 
     procInfo->RemoveAsActive(threadNum);
+#pragma omp atomic
+    procInfo->counting_barrier++;
+
     if (!lastUpdateOk) {
         //printf("[%zu] Updating on finish!\n",threadNum);
         setSimState("Final update...");

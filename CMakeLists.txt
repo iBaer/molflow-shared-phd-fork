@@ -133,7 +133,7 @@ set(INTERFACE_FILES
         Facet_shared.cpp
 
         File.cpp
-        Formulas.cpp
+        #Formulas.cpp
         FormulaEvaluator.cpp
         Geometry_shared.cpp
         GrahamScan.cpp
@@ -146,6 +146,10 @@ set(INTERFACE_FILES
 set(SIM_FILES
         Distributions.cpp
         ProfileModes.cpp
+
+        #convergence / formulas
+        Formulas.cpp
+        GLApp/GLParser.cpp
 
         # subprocesses
         SimulationFacet.cpp
@@ -207,7 +211,6 @@ set(GL_FILES
         GLApp/GLMenu.cpp
         GLApp/GLMenuBar.cpp
         GLApp/GLMessageBox.cpp
-        GLApp/GLParser.cpp
         GLApp/GLProgress.cpp
         GLApp/GLSaveDialog.cpp
         GLApp/GLScrollBar.cpp

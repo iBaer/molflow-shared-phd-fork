@@ -83,10 +83,11 @@ struct ProcComm {
         char statusString[128];
         PROCESS_INFO runtimeInfo;
     };
-
+    int counting_barrier{0};
     size_t masterCmd;
     size_t cmdParam;
     size_t cmdParam2;
+
     std::list<size_t> activeProcs;
     std::mutex m;
     std::vector<SubProcInfo> subProcInfo;
