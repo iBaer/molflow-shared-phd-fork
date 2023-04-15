@@ -846,7 +846,7 @@ void SimulationManager::ForwardGPUSettings(std::shared_ptr<flowgpu::MolflowGPUSe
             gpu_handle->AllowNewParticles();
         }
         else {
-            gpu_handle->CheckAndBlockDesorption_exact(1.00);
+            gpu_handle->StopNewParticles();
         }
     }
 }
