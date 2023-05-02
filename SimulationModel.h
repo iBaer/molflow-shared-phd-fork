@@ -116,6 +116,8 @@ public:
     int InitialiseFacets();
     void CalculateFacetParams(Facet *f);
 
+    virtual int AnalyzeGeom();
+
     // Molflow only
     //void CalcTotalOutgassing();
 

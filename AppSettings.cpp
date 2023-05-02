@@ -21,6 +21,10 @@ Full license text: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
 #include "AppSettings.h"
 
 namespace Settings {
+#if defined(DEBUG)
+    int verbosity{42};    // How much information should be printed
+#else
     int verbosity{3};    // How much information should be printed
+#endif
     int outputLevel{0};  // Spacing before output
 }

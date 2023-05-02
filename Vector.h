@@ -28,6 +28,8 @@ Vector3d operator+ (const Vector3d &v1, const Vector3d& v2);
 Vector3d operator-(const Vector3d &v1, const Vector3d& v2);
 Vector3d operator*(const Vector3d &v1, const double& mult);
 Vector3d operator*(const double& mult, const Vector3d &v1);
+Vector3d operator/(const Vector3d &v1, const double& div);
+Vector3d operator/(const double& div, const Vector3d &v1);
 double Dot(const Vector3d &v1, const Vector3d &v2);
 Vector3d CrossProduct(const Vector3d &v1, const Vector3d &v2);
 
@@ -36,6 +38,7 @@ Vector2d operator-(const Vector2d &v1, const Vector2d& v2);
 Vector2d operator*(const Vector2d &v1, const double& mult);
 Vector2d operator*(const double& mult, const Vector2d &v1);
 double Dot(const Vector2d &v1, const Vector2d &v2);
+double Distance(const Vector3d &v1, const Vector3d &v2);
 
 Vector2d ProjectVertex(const Vector3d& v, const Vector3d& U, const Vector3d& V, const Vector3d& origin);
 std::optional<Vector2d> Intersect2D(const Vector2d &p1, const Vector2d& p2, const Vector2d& p3, const Vector2d& p4);

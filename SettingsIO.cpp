@@ -35,6 +35,7 @@ namespace SettingsIO {
     bool isArchive = false;
     bool outputFacetDetails = false;
     bool outputFacetQuantities = false;
+    bool analyzeScene = false;
     double autogenerateTest = 0.0;
 
     std::string workFile;

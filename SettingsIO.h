@@ -46,6 +46,7 @@ namespace SettingsIO {
     extern bool outputFacetDetails; //! whether output for all facet details is wanted
     extern bool outputFacetQuantities; //! whether output for derived facet quantities is wanted
     extern double autogenerateTest; //! whether an automatically generated test case should be used as input
+    extern bool analyzeScene; //! just analyze the scene and quit
 
     int prepareIO();
     int initDirectories();

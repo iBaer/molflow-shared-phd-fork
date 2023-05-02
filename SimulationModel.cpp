@@ -206,3 +206,178 @@ void SimulationModel::CalculateFacetParams(Facet* f) {
     f->sh.maxSpeed = 4.0 * std::sqrt(2.0*8.31*f->sh.temperature / 0.001 / wp.gasMass);
 #endif
 }
+
+#include <Vector.h>
+#include <random>
+
+struct Triangle {
+    Vector3d v0, v1, v2;
+    Triangle() : v0(), v1(), v2(){};
+    Triangle(const Vector3d& v0, const Vector3d& v1, const Vector3d& v2) : v0(v0), v1(v1), v2(v2) {}
+};
+
+// Calculate the area of a triangle
+float triangleArea(const Triangle& tri) {
+    Vector3d edge1 = tri.v1 - tri.v0;
+    Vector3d edge2 = tri.v2 - tri.v0;
+    Vector3d crossProduct = CrossProduct(edge1, edge2);
+    return 0.5f * sqrtf(crossProduct.x * crossProduct.x + crossProduct.y * crossProduct.y + crossProduct.z * crossProduct.z);
+}
+
+// Calculate the centroid of a triangle
+Vector3d calculateCentroid(const Vector3d& v1, const Vector3d& v2, const Vector3d& v3) {
+    return (v1 + v2 + v3) / 3.0;
+}
+
+float randomFloat(float min, float max) {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dist(min, max);
+    return dist(gen);
+}
+
+int SimulationModel::AnalyzeGeom() {
+    std::vector<Triangle> triangles;
+
+    // Convert geometry (vertices and facets) to triangles
+    for (const auto& facet : facets) {
+        for (size_t i = 1; i < facet->indices.size() - 1; ++i) {
+            Triangle triangle;
+            triangle.v0 = vertices3[facet->indices[0]];
+            triangle.v1 = vertices3[facet->indices[i]];
+            triangle.v2 = vertices3[facet->indices[i + 1]];
+            triangles.push_back(triangle);
+        }
+    }
+
+    // Compute the AABB and total surface area
+    Vector3d minCorner(std::numeric_limits<float>::max());
+    Vector3d maxCorner(std::numeric_limits<float>::lowest());
+    float totalArea = 0.0f;
+
+    for (const auto& tri : triangles) {
+        Vector3d vertices[3] = {tri.v0, tri.v1, tri.v2};
+
+        for (const auto& vertex : vertices) {
+            minCorner.x = std::min(minCorner.x, vertex.x);
+            minCorner.y = std::min(minCorner.y, vertex.y);
+            minCorner.z = std::min(minCorner.z, vertex.z);
+
+            maxCorner.x = std::max(maxCorner.x, vertex.x);
+            maxCorner.y = std::max(maxCorner.y, vertex.y);
+            maxCorner.z = std::max(maxCorner.z, vertex.z);
+        }
+
+        totalArea += triangleArea(tri);
+    }
+
+    Vector3d sceneExtent = maxCorner - minCorner;
+    float sceneVolume = sceneExtent.x * sceneExtent.y * sceneExtent.z;
+    sceneVolume = isinf(sceneVolume) ? 0 : sceneVolume;
+
+    // Compute spatial distribution and depth complexity
+    int numSamplePairs = 1000;
+    float avgDistance = 0.0f;
+    int sceneDepthComplexity = 0;
+
+
+    Vector3d rayDirection(0, 0, -1); // Change the direction to test different viewpoints
+
+    for (int i = 0; i < numSamplePairs && triangles.size(); ++i) {
+        // Randomly select two triangles and compute the distance between their centroids
+        int idx1 = static_cast<int>(randomFloat(0, triangles.size()));
+        int idx2 = static_cast<int>(randomFloat(0, triangles.size()));
+
+        Vector3d centroid1 = (triangles[idx1].v0 + triangles[idx1].v1 + triangles[idx1].v2) / 3.0f;
+        Vector3d centroid2 = (triangles[idx2].v0 + triangles[idx2].v1 + triangles[idx2].v2) / 3.0f;
+
+        avgDistance += Distance(centroid1, centroid2) / numSamplePairs;
+
+        // Compute scene depth complexity
+        Vector3d startPos = centroid1 + rayDirection * sceneExtent.z;
+        for (const auto& tri : triangles) {
+            Vector3d edge1 = tri.v1 - tri.v0;
+            Vector3d edge2 = tri.v2 - tri.v0;
+            Vector3d normal = CrossProduct(edge1, edge2);
+
+            // Check if the ray intersects the triangle using the dot product with the normal
+            if (normal.x * rayDirection.x + normal.y * rayDirection.y + normal.z * rayDirection.z < 0) {
+                ++sceneDepthComplexity;
+            }
+        }
+    }
+
+    // Calculate the average polygon vertex count
+    size_t totalVertexCount = 0;
+    for (const auto& facet : facets) {
+        totalVertexCount += facet->indices.size();
+    }
+    double averageVertexCount = static_cast<double>(totalVertexCount) / facets.size();
+
+    // Calculate the median polygon area
+    std::vector<double> polygonAreas;
+    polygonAreas.reserve(triangles.size());
+    for (const Triangle& triangle : triangles) {
+        polygonAreas.push_back(triangleArea(triangle));
+    }
+    std::sort(polygonAreas.begin(), polygonAreas.end());
+    double medianPolygonArea = polygonAreas.size() > 0 ? polygonAreas[polygonAreas.size() / 2] : 0;
+
+    // Calculate the bounding sphere radius
+    Vector3d bboxCenter = (minCorner + maxCorner) / 2.0;
+    double boundingSphereRadius = 0.0;
+    for (const Vector3d& vertex : vertices3) {
+        double distance = Distance(vertex,bboxCenter);
+        boundingSphereRadius = std::max(boundingSphereRadius, distance);
+    }
+
+
+    // Calculate the average and maximum triangle edge length
+    double totalEdgeLength = 0.0;
+    double maxEdgeLength = 0.0;
+    for (const Triangle& triangle : triangles) {
+        double edge1Length = (triangle.v0 - triangle.v1).Length();
+        double edge2Length = (triangle.v1 - triangle.v2).Length();
+        double edge3Length = (triangle.v2 - triangle.v1).Length();
+
+        totalEdgeLength += edge1Length + edge2Length + edge3Length;
+
+        maxEdgeLength = std::max(maxEdgeLength, std::max(edge1Length, std::max(edge2Length, edge3Length)));
+    }
+    double averageEdgeLength = totalEdgeLength / (3 * triangles.size());
+
+    float aspectRatio = std::max(sceneExtent.x, std::max(sceneExtent.y, sceneExtent.z)) / std::min(sceneExtent.x, std::min(sceneExtent.y, sceneExtent.z));
+
+    int numTriangles = static_cast<int>(triangles.size());
+    float avgArea = numTriangles > 0 ? (totalArea /  numTriangles) : 0;
+    float primitiveDensity = numTriangles > 0 ? (numTriangles / sceneVolume) : 0;
+
+    // Output results for scene
+    std::cout << "Number of polygons: " << facets.size() << std::endl;
+
+    std::cout << "Average polygon vertex count: " << averageVertexCount << std::endl;
+    std::cout << "Median polygon area: " << medianPolygonArea << std::endl;
+    std::cout << "Bounding sphere radius: " << boundingSphereRadius << std::endl;
+
+    std::cout << "Number of triangles: " << numTriangles << std::endl;
+    std::cout << "Avg Edge of triangles: " << averageEdgeLength << std::endl;
+    std::cout << "Max Edge of triangles: " << maxEdgeLength << std::endl;
+
+
+    //std::cout << "AABB min corner: (" << minCorner.x << ", " << minCorner.y << ", " << minCorner.z << ")" << std::endl;
+    //std::cout << "AABB max corner: (" << maxCorner.x << ", " << maxCorner.y << ", " << maxCorner.z << ")" << std::endl;
+    std::cout << "Average triangle area: " << avgArea << std::endl;
+    std::cout << "Scene volume: " << sceneVolume << std::endl;
+    std::cout << "Average distance between triangle centroids: " << avgDistance << std::endl;
+    std::cout << "Aspect ratio: " << aspectRatio << std::endl;
+    std::cout << "Scene depth complexity: " << sceneDepthComplexity << std::endl;
+
+    return 0;
+}
+
+/*#include <iostream>
+#include <vector>
+#include <limits>
+#include <cmath>
+#include <algorithm>
+#include <random>*/
