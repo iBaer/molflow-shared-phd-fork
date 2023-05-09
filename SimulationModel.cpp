@@ -313,6 +313,21 @@ int SimulationModel::AnalyzeGeom() {
         totalVertexCount += facet->indices.size();
     }
     double averageVertexCount = static_cast<double>(totalVertexCount) / facets.size();
+    std::vector<size_t> vertexCounts;
+    vertexCounts.reserve(facets.size());
+    for (const auto& facet : facets) {
+        vertexCounts.push_back(facet->indices.size());
+    }
+    std::sort(vertexCounts.begin(), vertexCounts.end());
+
+    size_t medianVertexCount;
+    if (vertexCounts.size() % 2 == 0) {
+        // Even number of polygons
+        medianVertexCount = (vertexCounts[vertexCounts.size() / 2 - 1] + vertexCounts[vertexCounts.size() / 2]) / 2;
+    } else {
+        // Odd number of polygons
+        medianVertexCount = vertexCounts[vertexCounts.size() / 2];
+    }
 
     // Calculate the median polygon area
     std::vector<double> polygonAreas;
@@ -321,7 +336,7 @@ int SimulationModel::AnalyzeGeom() {
         polygonAreas.push_back(triangleArea(triangle));
     }
     std::sort(polygonAreas.begin(), polygonAreas.end());
-    double medianPolygonArea = polygonAreas.size() > 0 ? polygonAreas[polygonAreas.size() / 2] : 0;
+    double medianPolygonArea = !polygonAreas.empty() ? polygonAreas[polygonAreas.size() / 2] : 0;
 
     // Calculate the bounding sphere radius
     Vector3d bboxCenter = (minCorner + maxCorner) / 2.0;
@@ -344,25 +359,37 @@ int SimulationModel::AnalyzeGeom() {
 
         maxEdgeLength = std::max(maxEdgeLength, std::max(edge1Length, std::max(edge2Length, edge3Length)));
     }
-    double averageEdgeLength = totalEdgeLength / (3 * triangles.size());
+    double averageEdgeLength = totalEdgeLength / (3.0 * triangles.size());
 
     float aspectRatio = std::max(sceneExtent.x, std::max(sceneExtent.y, sceneExtent.z)) / std::min(sceneExtent.x, std::min(sceneExtent.y, sceneExtent.z));
 
     int numTriangles = static_cast<int>(triangles.size());
     float avgArea = numTriangles > 0 ? (totalArea /  numTriangles) : 0;
-    float primitiveDensity = numTriangles > 0 ? (numTriangles / sceneVolume) : 0;
+    float primitiveDensity = sceneVolume > 0 ? (numTriangles / sceneVolume) : 0;
 
+    // Calculate the average polygon vertex count
+    size_t nbRealTri = 0;
+    size_t nbRealQuad = 0;
+    size_t nbRealPol = 0;
+    for (const auto& facet : facets) {
+        nbRealTri += facet->indices.size() == 3 ? 1 : 0;
+        nbRealQuad += facet->indices.size() == 4 ? 1 : 0;
+        nbRealPol += facet->indices.size() > 4 ? 1 : 0;
+    }
     // Output results for scene
-    std::cout << "Number of polygons: " << facets.size() << std::endl;
+    std::cout << "Number of facets: " << facets.size() << std::endl;
+    std::cout << "Number of triangles (real): " << nbRealTri << std::endl;
+    std::cout << "Number of real rectangles: " << nbRealQuad << std::endl;
+    std::cout << "Number of real n.polygons: " << nbRealPol << std::endl;
 
     std::cout << "Average polygon vertex count: " << averageVertexCount << std::endl;
+    std::cout << "Median polygon vertex count: " << medianVertexCount << std::endl;
     std::cout << "Median polygon area: " << medianPolygonArea << std::endl;
     std::cout << "Bounding sphere radius: " << boundingSphereRadius << std::endl;
 
-    std::cout << "Number of triangles: " << numTriangles << std::endl;
+    std::cout << "Number of triangles (tri-mesh): " << numTriangles << std::endl;
     std::cout << "Avg Edge of triangles: " << averageEdgeLength << std::endl;
     std::cout << "Max Edge of triangles: " << maxEdgeLength << std::endl;
-
 
     //std::cout << "AABB min corner: (" << minCorner.x << ", " << minCorner.y << ", " << minCorner.z << ")" << std::endl;
     //std::cout << "AABB max corner: (" << maxCorner.x << ", " << maxCorner.y << ", " << maxCorner.z << ")" << std::endl;
@@ -371,6 +398,7 @@ int SimulationModel::AnalyzeGeom() {
     std::cout << "Average distance between triangle centroids: " << avgDistance << std::endl;
     std::cout << "Aspect ratio: " << aspectRatio << std::endl;
     std::cout << "Scene depth complexity: " << sceneDepthComplexity << std::endl;
+    std::cout << "Primitive density: " << primitiveDensity << std::endl;
 
     return 0;
 }
