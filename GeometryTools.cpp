@@ -261,7 +261,8 @@ void GeometryTools::AnalyseGeometry(Geometry* geometry) {
     //lone = HandleLoneEdge(edges_algo[1]);
     CalculateNeighborAngles(edges_algo[1], geometry);
     //trans = HandleTransparent(edges_algo[1], geometry);
-    Log::console_msg(2, "[{} - {} - {} - {}] Neighbor T2 Dupli: {}\n", edges_algo[1].size(), dupli, lone, trans, stop.Elapsed());
+    if(dupli!=0 || lone!=0 || trans !=0)
+        Log::console_msg(2, "[{} - {} - {} - {}] Neighbor T2 Dupli: {}\n", edges_algo[1].size(), dupli, lone, trans, stop.Elapsed());
     edges_algo[0] = std::move(edges_algo[1]);
 
     stop.ReInit(); stop.Start();
@@ -271,7 +272,7 @@ void GeometryTools::AnalyseGeometry(Geometry* geometry) {
     //lone = HandleLoneEdge(edges_algo[2]);
     CalculateNeighborAngles(edges_algo[2], geometry);
     //trans = HandleTransparent(edges_algo[2], geometry);
-    Log::console_msg(2, "[{} - {} - {} - {}] Neighbor T3 Dupli: {}\n", edges_algo[2].size(), dupli, lone, trans, stop.Elapsed());
+    if(dupli!=0 || lone!=0 || trans !=0) Log::console_msg(2, "[{} - {} - {} - {}] Neighbor T3 Dupli: {}\n", edges_algo[2].size(), dupli, lone, trans, stop.Elapsed());
 
     stop.ReInit(); stop.Start();
     GetCommonEdgesHash(geometry, edges_algo[3]);
@@ -280,7 +281,7 @@ void GeometryTools::AnalyseGeometry(Geometry* geometry) {
     //lone = HandleLoneEdge(edges_algo[3]);
     //trans = HandleTransparent(edges_algo[3], geometry);
     CalculateNeighborAngles(edges_algo[3], geometry);
-    Log::console_msg(2, "[{} - {} - {} - {}] Neighbor T4 Dupli: {}\n", edges_algo[3].size(), dupli, lone, trans, stop.Elapsed());
+    if(dupli!=0 || lone!=0 || trans !=0)Log::console_msg(2, "[{} - {} - {} - {}] Neighbor T4 Dupli: {}\n", edges_algo[3].size(), dupli, lone, trans, stop.Elapsed());
 
     stop.ReInit(); stop.Start();
     GetCommonEdgesMap(geometry, edges_algo[4]);
@@ -289,7 +290,7 @@ void GeometryTools::AnalyseGeometry(Geometry* geometry) {
     //lone = HandleLoneEdge(edges_algo[3]);
     //trans = HandleTransparent(edges_algo[3], geometry);
     CalculateNeighborAngles(edges_algo[4], geometry);
-    Log::console_msg(2, "[{} - {} - {} - {}] Neighbor T5 Dupli: {}\n", edges_algo[4].size(), dupli, lone, trans, stop.Elapsed());
+    if(dupli!=0 || lone!=0 || trans !=0)Log::console_msg(2, "[{} - {} - {} - {}] Neighbor T5 Dupli: {}\n", edges_algo[4].size(), dupli, lone, trans, stop.Elapsed());
 
     stop.ReInit(); stop.Start();
     GetCommonEdgesSingleVertex(geometry, edges_algo[5]);
@@ -312,7 +313,8 @@ void GeometryTools::CompareAlgorithm(Geometry* geometry, size_t index) {
     // Put in order for comparism
     auto& compEdge = edges_algo[index];
 
-    Log::console_msg(2, "[T1 vs. T{}] Neighbors found: {} - {}\n", index+1, edges_algo[0].size(), compEdge.size());
+    if(edges_algo[0].size() != compEdge.size())
+        Log::console_msg(2, "[T1 vs. T{}] Neighbors found: {} - {}\n", index+1, edges_algo[0].size(), compEdge.size());
 
     int j = 0;
     size_t minCompSize = compEdge.size();
@@ -361,6 +363,7 @@ void GeometryTools::PolygonsToTriangles(Geometry* geometry, std::vector<size_t> 
     std::vector<InterfaceFacet*> triangleFacets = GetTriangulatedGeometry(geometry, selectedIndices);
     geometry->RemoveFacets(selectedIndices);
     geometry->AddFacets(triangleFacets);
+
 }
 
 /*!
