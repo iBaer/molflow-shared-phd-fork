@@ -26,6 +26,18 @@ Full license text: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
 #include "NeighborScan.h"
 #include "SimulationModel.h"
 
+#if defined(USE_CGAL)
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Triangulation_vertex_base_with_info_2.h>
+#include <CGAL/Delaunay_triangulation_2.h>
+
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+typedef CGAL::Triangulation_vertex_base_with_info_2<unsigned, K> Vb;
+typedef CGAL::Triangulation_data_structure_2<Vb> Tds;
+typedef CGAL::Delaunay_triangulation_2<K, Tds> Delaunay;
+typedef K::Point_2 Point;
+#endif
+
 std::vector<InterfaceFacet*> GeometryTools::GetTriangulatedGeometry(Geometry* geometry, std::vector<size_t> facetIndices, GLProgress* prg)
 {
     std::vector<InterfaceFacet*> triangleFacets;
@@ -48,6 +60,7 @@ std::vector<InterfaceFacet*> GeometryTools::GetTriangulatedGeometry(Geometry* ge
     return triangleFacets;
 }
 
+#ifndef USE_CGAL
 std::vector<InterfaceFacet*> GeometryTools::Triangulate(InterfaceFacet *f) {
 
     // Triangulate a facet (rendering purpose)
@@ -89,7 +102,58 @@ std::vector<InterfaceFacet*> GeometryTools::Triangulate(InterfaceFacet *f) {
 
     return triangleFacets;
 }
+#else
+std::vector<InterfaceFacet*> GeometryTools::Triangulate(InterfaceFacet *f) {
 
+    // Triangulate a facet (rendering purpose)
+    // The facet must have at least 3 points
+    // Use the very simple "Two-Ears" theorem. It computes in O(n^2).
+    std::vector<InterfaceFacet*> triangleFacets;
+    if (f->nonSimple) {
+        // Not a simple polygon
+        // Abort triangulation
+        return triangleFacets;
+    }
+
+    // Build a Polygon
+    GLAppPolygon p;
+    p.pts = f->vertices2;
+    //p.sign = f->sign;
+
+    std::unique_ptr<InterfaceFacet> facetCopy(new InterfaceFacet(f->sh.nbIndex)); //Create a copy and don't touch original
+    facetCopy->CopyFacetProperties(f);
+    facetCopy->indices = f->indices;
+
+    std::vector<std::pair<CGAL::Point_2<K>, unsigned>> indexed_vertices;
+    for (unsigned i = 0; i < p.pts.size(); ++i) {
+        indexed_vertices.emplace_back(CGAL::Point_2<K>(p.pts[i].u, p.pts[i].v), facetCopy->indices[i]);
+    }
+
+
+    // Perform Delaunay triangulation
+    Delaunay triangulation;
+    triangulation.insert(indexed_vertices.begin(), indexed_vertices.end());
+
+    // Convert each face into a triangle and add to output list
+    for (Delaunay::Finite_faces_iterator fit = triangulation.finite_faces_begin(); fit != triangulation.finite_faces_end(); ++fit) {
+        Delaunay::Face_handle face = fit;
+        int triangleIndices[3];
+
+        triangleIndices[0] = face->vertex(0)->info();
+        triangleIndices[1] = face->vertex(1)->info();
+        triangleIndices[2] = face->vertex(2)->info();
+
+    InterfaceFacet* triangle = new InterfaceFacet(3);
+    triangle->CopyFacetProperties(facetCopy.get(),0);
+    for (size_t i = 0; i < 3; i++) {
+        triangle->indices[i] = triangleIndices[i];
+    }
+    triangleFacets.emplace_back(triangle);
+    }
+
+    return triangleFacets;
+}
+#endif
 int  GeometryTools::FindEar(const GLAppPolygon& p){
 
     int i = 0;

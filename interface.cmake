@@ -5,6 +5,14 @@
 set(PROJECT_NAME shared_interface)
 project(${PROJECT_NAME} CXX)
 
+set(HEADER_DIR_ZIP ./external/ziplib/Source)
+
+if(USE_CGAL)
+    find_package(CGAL REQUIRED)
+    message("Enabling CGAL for various optimized functions.")
+    ADD_DEFINITIONS(-DUSE_CGAL)
+endif()
+
 # Add library to build.
 add_library(${PROJECT_NAME} STATIC
         ${INTERFACE_FILES}
@@ -24,6 +32,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         ${HEADER_DIR_6}
         ${HEADER_DIR_7}
         ${IMGUI_DIR}
+        ${HEADER_DIR_ZIP}
         )
 
 #[[target_include_directories(${PROJECT_NAME} PRIVATE ${HEADER_DIR_ZIP}
@@ -39,6 +48,10 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 #[[target_include_directories(${PROJECT_NAME} PUBLIC ${HEADER_DIR_ZIP}
         ${EXTERNAL_DIR} SYSTEM INTERFACE ${HEADER_DIR_ZIP}
         ${EXTERNAL_DIR})]]
+
+if(USE_CGAL)
+    target_link_libraries(${PROJECT_NAME} PRIVATE CGAL::CGAL)
+endif()
 
 if(MSVC)
     find_package(OpenGL REQUIRED)

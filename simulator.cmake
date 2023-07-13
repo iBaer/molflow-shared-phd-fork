@@ -25,6 +25,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         ${HEADER_DIR_7}
         )
 
+target_include_directories(${PROJECT_NAME} PUBLIC
+        ${HEADER_DIR_ZIP}
+        )
+
+
 #[[target_include_directories(${PROJECT_NAME} PRIVATE ${HEADER_DIR_ZIP}
         SYSTEM INTERFACE ${HEADER_DIR_ZIP})]]
 
