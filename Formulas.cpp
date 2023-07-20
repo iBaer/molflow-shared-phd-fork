@@ -249,6 +249,7 @@ double Formulas::GetConvRate(int formulaId) {
         varn += std::pow(convVal.second - xmean,2);
     }
     varn *= 1.0 / (conv_vec.size() - 1.0);
+    double quant90Val = 1.645 * std::sqrt(varn) / std::sqrt(conv_vec.size());
     double quant95Val = 1.96 * std::sqrt(varn) / std::sqrt(conv_vec.size());
     double quant99Val = 2.576 * std::sqrt(varn) / std::sqrt(conv_vec.size());
     double quant995Val = 3.0 * std::sqrt(varn) / std::sqrt(conv_vec.size());
@@ -262,15 +263,25 @@ double Formulas::GetConvRate(int formulaId) {
         Log::console_msg(2, "[1] Sufficient convergent reached: {:e}\n", convDelta / conv_vec.back().second);
     */
 
-    if(!(xmean - quant995Val <= lower_bound && xmean + quant995Val >= upper_bound))
-        Log::console_msg(2, "[CI 99.5%] Convergence reached: {:e} +- {:e} / {:e} = {:e} in [{:e} , {:e}]\n",
-                         conv_vec.back().second, varn, std::sqrt(varn), quant995Val, xmean - quant99Val, xmean + quant995Val);
-    else if(!(xmean - quant99Val <= lower_bound && xmean + quant99Val >= upper_bound))
-        Log::console_msg(2, "[CI 99.0%] Convergence reached: {:e} in [{:e} , {:e}]\n", conv_vec.back().second, xmean - quant99Val, xmean + quant99Val);
-    else if(!(xmean - quant95Val <= lower_bound && xmean + quant95Val >= upper_bound))
-        Log::console_msg(2, "[CI 95.0%] Convergence reached: {:e} in [{:e} , {:e}]\n", conv_vec.back().second, xmean - quant95Val, xmean + quant95Val);
-
-        // ...
+    if(!(xmean - quant995Val <= lower_bound && xmean + quant995Val >= upper_bound)) {
+        Log::console_msg(5, "[CI 99.5%] Convergence reached: {:e} +- {:e} / {:e} = {:e} in [{:e} , {:e}]\n",
+                         conv_vec.back().second, varn, std::sqrt(varn), quant995Val, xmean - quant99Val,
+                         xmean + quant995Val);
+        return 99.5;
+    }
+    else if(!(xmean - quant99Val <= lower_bound && xmean + quant99Val >= upper_bound)) {
+        Log::console_msg(5, "[CI 99.0%] Convergence reached: {:e} in [{:e} , {:e}]\n", conv_vec.back().second,
+                         xmean - quant99Val, xmean + quant99Val);
+        return 99.0;
+    }else if(!(xmean - quant95Val <= lower_bound && xmean + quant95Val >= upper_bound)) {
+        Log::console_msg(5, "[CI 95.0%] Convergence reached: {:e} in [{:e} , {:e}]\n", conv_vec.back().second,
+                         xmean - quant95Val, xmean + quant95Val);
+        return 95.0;
+    }    else if(!(xmean - quant90Val <= lower_bound && xmean + quant90Val >= upper_bound)) {
+        Log::console_msg(5, "[CI 90.0%] Convergence reached: {:e} in [{:e} , {:e}]\n", conv_vec.back().second,
+                         xmean - quant90Val, xmean + quant90Val);
+        return 90.0;
+    }        // ...
         /*if(xmean - quant995Val >= lower_bound && xmean + quant995Val <= upper_bound)
             Log::console_msg(2, "[CI 99.5%] Convergence reached: {:e} +- {:e} / {:e} = {:e} in [{:e} , {:e}]\n",
                  conv_vec.back().second, varn, std::sqrt(varn), quant995Val, xmean - quant99Val, xmean + quant995Val);
@@ -288,9 +299,10 @@ double Formulas::GetConvRate(int formulaId) {
         */
     else {
         double dist = std::min(lower_bound - xmean + quant95Val, upper_bound - xmean - quant95Val);
-        Log::console_msg(2, "[4] Convergence distance to a=0.95: {:e} --> {:e} close to [{:e} , {:e}] ( in : [{:e} , {:e}])\n",
+        Log::console_msg(5, "[4] Convergence distance to a=0.95: {:e} --> {:e} close to [{:e} , {:e}] ( in : [{:e} , {:e}])\n",
                          dist, conv_vec.back().second, xmean - quant95Val, xmean + quant95Val, lower_bound, upper_bound);
         //Log::console_msg(2, "[4] Abs to a95: {:e} --> Rel to a95: {:e} / {:e}\n", quant95Val, (conv_vec.back().second - xmean) / xmean, (quant95Val / conv_vec.back().second));
+        return dist;
     }
     return quant95Val * sqrt(varn*varn/conv_vec.size());
 }
@@ -308,13 +320,13 @@ void Formulas::RestartASCBR(int formulaId){
 
 ASCBRData * Formulas::GetLastBand(int formulaId){
     if(convergenceValues[formulaId].bands.empty()){
-        convergenceValues[formulaId].bands.emplace_back(ASCBRData());
+        convergenceValues[formulaId].bands.emplace_back();
     }
     else {
         auto &band = convergenceValues[formulaId].bands.back();
         if (band.passed) {
             // create new
-            convergenceValues[formulaId].bands.emplace_back(ASCBRData());
+            convergenceValues[formulaId].bands.emplace_back();
         }
     }
 
@@ -398,10 +410,10 @@ double Formulas::ApproxShapeParameter(int formulaId, int index_from = 1) {
     // Initialize
     double shape_param = 0.0;
     double den = 0.0;
-    for(int i = 1; i < cb_length; ++i){
+    for(int i = index_from; i < cb_length; ++i){
         den += (double) i * freq_accum[formulaId][i];
     }
-    if(den <= 1e-8) den = 1.0;
+    if(den <= 1e-8) den = 1e-8;
     shape_param = freq_accum.size() > index_from ? 1.0 - freq_accum[formulaId][index_from] / den : 0.0;
 
     return shape_param;

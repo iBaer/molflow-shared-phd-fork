@@ -80,9 +80,11 @@ public:
 
     static int GetCommonEdgesMap(Geometry *geometry, std::vector<CommonEdge> &commonEdges);
 
+    static void AnalyseGeometry(Geometry* geometry, int func_index, bool clean_results);
     static void AnalyseGeometry(Geometry *geometry);
 
-    static void CompareAlgorithm(Geometry *geometry, size_t index);
+    static void CompareAlgos(Geometry* geometry, size_t comp_against);
+    static void CompareAlgorithm(Geometry *geometry, size_t index, size_t comp_against);
 
     static int GetNeighbors(Geometry *geometry, std::vector<CommonEdge> &commonEdges);
 

@@ -50,6 +50,7 @@ public:
     bool ToggleGlobalSettings();
     bool ToggleAABBWindow();
     bool ToggleConvWindow();
+    bool ToggleGeomAnalysis();
 protected:
     // Window states (visible or not)
     bool show_main_hub{false}; //!< Hub managing all other windows
@@ -61,7 +62,7 @@ protected:
     bool show_conv{false}; //!< Plot showing convergence of simulation stats
     bool show_aabb{false};
     bool show_select{false};
-
+    bool show_analysis{false};
     double start_time; // to keep track how long the ImGui GUI is running
 #if defined(MOLFLOW)
     static void restartProc(int nbProc, MolFlow *mApp);

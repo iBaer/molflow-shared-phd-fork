@@ -107,8 +107,8 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
             if(ImGui::BeginTabItem("ASCBR")) {
                 bool apply_change = false;
                 bool apply_otf_change = false;
-
-                ImGui::Checkbox("Apply", &apply_otf_change);
+                static bool always_true = true;
+                ImGui::Checkbox("Apply", mApp->worker.model->otfParams.batch_size == batch_size ? &always_true : &apply_otf_change);
                 ImGui::SameLine();
                 ImGui::SliderInt("Simulation Batch size", &batch_size, 0, 1e9);
                 ImGui::Spacing();
@@ -129,13 +129,25 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
                    ImGui::Spacing();
                    static int fid = 0;
                    ImGui::SliderInt("Formula #", &fid, 0, formulas->formulas_n->size()-1);
+
                    if (mApp->worker.IsRunning()/* && formulas->formulasChanged*//*formulas->FetchNewConvValue()*/) {
                        /*sp1 = formulas->ApproxShapeParameter(fid, 1);
                        sp2 = formulas->ApproxShapeParameter(fid, 0);
                        c_rate = formulas->GetConvRate(fid);
                        formulas->formulasChanged = false;*/
+
+                       if(formulas->formulasChanged) {
+                           int fid = 0;
+                           //for(int fid = 0; fid < formulas.get()->convergenceValues.size(); fid++) {
+                               formulas.get()->convergenceValues[fid].shape1 = formulas->ApproxShapeParameter(fid, 1);
+                               formulas.get()->convergenceValues[fid].shape2 = formulas->ApproxShapeParameter(fid, 0);
+                               formulas.get()->convergenceValues[fid].conv_rate =  formulas->GetConvRate(fid);
+                               formulas->formulasChanged = false;
+                           //}
+                       }
+
                        sp1 = formulas->convergenceValues.at(fid).shape1;
-                       sp2 = formulas->convergenceValues.at(fid).shape1;
+                       sp2 = formulas->convergenceValues.at(fid).shape2;
                        c_rate = formulas->convergenceValues.at(fid).conv_rate;
                        //formulas->formulasChanged = false;
                    }
@@ -147,6 +159,8 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
                    ImGui::Text("%s", fmt::format("Shape Param 2: {:5.4f}", sp2).c_str());
 
                    if (!formulas->convergenceValues.empty()) {
+                       ImGui::Text("%s", fmt::format("N Samples: {}", formulas->convergenceValues[fid].conv_vec.size()).c_str());
+                       ImGui::SameLine();
                        if(!formulas->convergenceValues[fid].bands.empty()) {
                            auto* band = formulas->GetLastBand(fid);
                            ImGui::Text("%s", fmt::format("Current chain: {}", band->chain_length).c_str());

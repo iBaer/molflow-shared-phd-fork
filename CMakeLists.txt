@@ -126,6 +126,7 @@ set(INTERFACE_FILES
         Interface/ImguiConvergencePlot.cpp
         Interface/ImguiSidebar.cpp
         Interface/ImguiShowNeighbors.cpp
+        Interface/ImguiGeomAnalysis.cpp
         Interface/ImguiExtensions.cpp
         Interface/transfer_function_widget.cpp
 

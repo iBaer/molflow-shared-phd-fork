@@ -22,6 +22,7 @@ Full license text: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
 #define MOLFLOW_PROJ_SIMULATIONCONTROLLER_H
 
 #include <string>
+#include <omp.h>
 #include "SMP.h"
 #include "ProcessControl.h"
 #include "SimulationUnit.h"
@@ -47,6 +48,8 @@ public:
     ProcComm* procInfo;
     SimulationUnit* simulation;
     MFSim::Particle* particle;
+    omp_lock_t* lock;
+
     bool runLoop();
 
 private:

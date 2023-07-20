@@ -33,7 +33,7 @@ Full license text: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
 #include <sys/resource.h>
 #endif
 
-
+#define USE_OMP_BARRIER
 
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
 #include <process.h>
@@ -143,6 +143,8 @@ bool SimThread::runLoop() {
     const size_t batch_size = particle->model->otfParams.batch_size / particle->model->otfParams.nbProcess;
     size_t current_batch = batch_size;
     do {
+        int my_iteration = procInfo->iteration;
+
         setSimState(getSimStatus());
         size_t desorptions = localDesLimit;//(localDesLimit > 0 && localDesLimit > particle->tmpState.globalHits.globalHits.hit.nbDesorbed) ? localDesLimit - particle->tmpState.globalHits.globalHits.hit.nbDesorbed : 0;
         //printf("Pre[%zu] %lu + %lu / %lu\n",threadNum, desorptions, particle->tmpState.globalHits.globalHits.hit.nbDesorbed, localDesLimit);
@@ -195,33 +197,62 @@ bool SimThread::runLoop() {
             if(res == HALT && desorptions <= 0)
                 simEos = false;
 
+            // Synchronise, save convergence results and restart
+#ifdef USE_OMP_BARRIER
+#pragma omp barrier
+#else
 #pragma omp atomic
             procInfo->counting_barrier++;
+            while(procInfo->counting_barrier < procInfo->activeProcs.size()  && my_iteration == procInfo->iteration) {
+                Sleep(5); // sleep for 1 millisecond
+            }
+#endif
 
-            /*while(procInfo->counting_barrier != procInfo->subProcInfo.size()) {
-//#pragma omp flush(procInfo->counting_barrier)
-                Sleep(1000); // sleep for 1 millisecond
-            }*/
-                // Synchronise, save convergence results and restart
+            //if(!this->simulation->model->otfParams.formula_ptr->convergenceValues.empty() && !simulation->model->otfParams.formula_ptr->convergenceValues[0].conv_vec.empty()){
+            //Log::console_msg(0,"    [{}] Reached CB at {} ~ {}\n", threadNum, this->simulation->globState->globalHits.globalHits.nbDesorbed, timeEnd-timeStart);
+            //}
 
             if(procInfo->activeProcs.front() == threadNum) {
-                    simulation->FetchConvValues();
-                    if (simulation->model->otfParams.formula_ptr &&
+                simulation->FetchConvValues();
+                if(!this->simulation->model->otfParams.formula_ptr->convergenceValues.empty() && !simulation->model->otfParams.formula_ptr->convergenceValues[0].conv_vec.empty()){
+                    Log::console_msg(0,"[{}] Adding conv point #{} at {} ( : {}) ~ {}\n", threadNum, simulation->model->otfParams.formula_ptr->convergenceValues[0].conv_vec.size(),
+                                     simulation->model->otfParams.formula_ptr->convergenceValues[0].conv_vec.back().first, this->simulation->globState->globalHits.globalHits.nbDesorbed, timeEnd-timeStart);
+                }
+                if (simulation->model->otfParams.formula_ptr &&
                         simulation->model->otfParams.formula_ptr->CheckConvergence()) {
                         simulation->isConverged = true;
                     }
             }
+
+#ifdef USE_OMP_BARRIER
+#pragma omp barrier
+#else
+            #pragma omp atomic
+            procInfo->ready_to_decrement++;
+            while(procInfo->ready_to_decrement != procInfo->activeProcs.size()  && my_iteration == procInfo->iteration) {
+                Sleep(5);
+            }
+            //Log::console_msg(0,"    [{}] Reached post CB at {} ~ {}\n", threadNum, this->simulation->globState->globalHits.globalHits.nbDesorbed, timeEnd-timeStart);
 #pragma omp atomic
             procInfo->counting_barrier--;
-
+            if(procInfo->counting_barrier == 0) {
+#pragma omp critical
+                procInfo->ready_to_decrement = 0;
+#pragma omp atomic
+                procInfo->iteration++;
+            }
+            while((procInfo->counting_barrier > 0  && my_iteration == procInfo->iteration) || procInfo->ready_to_decrement != 0) {
+                Sleep(5);
+            }
+#endif
         }
         //printf("[%zu] PUP: %lu , %lu , %lu\n",threadNum, desorptions,localDesLimit, particle->tmpState.globalHits.globalHits.hit.nbDesorbed);
         eos = simEos || simulation->IsConverged() ||  (this->particle->model->otfParams.timeLimit != 0 ? timeEnd-timeStart >= this->particle->model->otfParams.timeLimit : false) || (procInfo->masterCmd != COMMAND_START) || (procInfo->subProcInfo[threadNum].slaveState == PROCESS_ERROR);
     } while (!eos);
 
-    procInfo->RemoveAsActive(threadNum);
+    procInfo->RemoveAsActive(threadNum);/*
 #pragma omp atomic
-    procInfo->counting_barrier++;
+    procInfo->counting_barrier++;*/
 
     if (!lastUpdateOk) {
         //printf("[%zu] Updating on finish!\n",threadNum);

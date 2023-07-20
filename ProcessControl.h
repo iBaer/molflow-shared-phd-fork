@@ -84,6 +84,9 @@ struct ProcComm {
         PROCESS_INFO runtimeInfo;
     };
     int counting_barrier{0};
+    int ready_to_decrement{0};
+    int iteration{0};
+
     size_t masterCmd;
     size_t cmdParam;
     size_t cmdParam2;

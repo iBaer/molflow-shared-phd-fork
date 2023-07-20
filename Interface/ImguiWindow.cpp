@@ -36,6 +36,7 @@ Full license text: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
 #include "imgui/imgui_impl_sdl.h"
 #include "ImguiGlobalSettings.h"
 #include "ImguiShowNeighbors.h"
+#include "ImguiGeomAnalysis.h"
 #include "ImguiPerformancePlot.h"
 #include "ImguiSidebar.h"
 #include "ImguiConvergencePlot.h"
@@ -76,6 +77,13 @@ bool ImguiWindow::ToggleConvWindow(){
     show_conv = !show_conv;
     return show_conv;
 }
+
+bool ImguiWindow::ToggleGeomAnalysis(){
+    show_analysis = !show_analysis;
+    return show_analysis;
+}
+
+
 // --- Toggle functions ---
 
 // Setup Dear ImGui context and various default values (font, colors etc.)
@@ -159,6 +167,7 @@ void ImguiWindow::init() {
     show_perfo = false;
     show_conv = false;
     show_select = false;
+    show_analysis = false;
 
     start_time = ImGui::GetTime();
 }
@@ -278,6 +287,7 @@ void ImguiWindow::renderSingle() {
             ImGui::Checkbox("Performance Plot", &show_perfo);
             ImGui::Checkbox("Convergence Plot", &show_conv);
             ImGui::Checkbox("Select neighbors", &show_select);
+            ImGui::Checkbox("Geometrie analysis", &show_analysis);
 
             ImGui::Text("Avg %.3f ms/frame (%.1f FPS)",
                         1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -312,6 +322,10 @@ void ImguiWindow::renderSingle() {
 
         if (show_select) {
             ShowNeighborSelect(mApp, &show_select);
+        }
+
+        if (show_analysis) {
+            ShowGeomAnalysis(mApp, &show_analysis);
         }
 
         // 5. Show Window for ADS configuration/visualisation
