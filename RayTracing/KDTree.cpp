@@ -244,7 +244,7 @@ KdTreeAccel::KdTreeAccel(SplitMethod splitMethod, std::vector<std::shared_ptr<Pr
 
     if (true && withBattery) {
         Log::console_msg_master(4, "--- KD with HitBattery ---\n");
-        Log::console_msg_master(4, " Battery size: %zu\n", battery.size());
+        Log::console_msg_master(4, " Battery size: {}\n", battery.size());
         // if battery is too large, only use a random sample
 
         auto *batter_ptr = const_cast<std::vector<TestRay> *>(&battery);
@@ -252,7 +252,7 @@ KdTreeAccel::KdTreeAccel(SplitMethod splitMethod, std::vector<std::shared_ptr<Pr
             batter_ptr = new std::vector<TestRay>;
             std::sample(battery.begin(), battery.end(), std::back_inserter(*batter_ptr),
                         HITCACHELIMIT, std::mt19937{std::random_device{}()});
-            Log::console_msg_master(4, " Sample size: %zu\n", batter_ptr->size());
+            Log::console_msg_master(4, " Sample size: {}\n", batter_ptr->size());
         }
         std::vector<TestRayLoc> indices;
         indices.reserve(batter_ptr->size());

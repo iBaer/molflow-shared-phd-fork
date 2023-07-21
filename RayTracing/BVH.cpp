@@ -530,8 +530,8 @@ BVHAccel::BVHAccel(const std::vector<TestRay> &battery, std::vector<std::shared_
     }
 
     Log::console_msg_master(4, "--- BVH with HitBattery ---\n");
-    Log::console_msg_master(4, " Battery size   : %zu\n", battery.size());
-    Log::console_msg_master(4, " Sampled battery: %zu\n", this->battery.size());
+    Log::console_msg_master(4, " Battery size   : {}\n", battery.size());
+    Log::console_msg_master(4, " Sampled battery: {}\n", this->battery.size());
 
     construct(primitiveInfo);
 }
