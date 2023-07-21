@@ -432,6 +432,7 @@ public:
     bool raySampling;
 
     bool calc_convergence;
+    bool run_batch;
     std::shared_ptr<Formulas> formula_ptr;
 
     size_t logFacetId, logLimit;

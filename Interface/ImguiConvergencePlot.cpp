@@ -83,6 +83,7 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
     static float sp1 = 0.0;
     static float sp2 = 0.0;
     static bool use_abs_err = formulas->useAbsEps;
+    static bool run_batched = mApp->worker.model->otfParams.run_batch;
 
     static bool plot_ascbr = true;
     static int plot_limit_x = 0;
@@ -109,6 +110,10 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
                 bool apply_otf_change = false;
                 static bool always_true = true;
                 ImGui::Checkbox("Apply", mApp->worker.model->otfParams.batch_size == batch_size ? &always_true : &apply_otf_change);
+                ImGui::SameLine();
+                if(ImGui::Checkbox("Run batch mode", &run_batched)){
+                    apply_otf_change = true;
+                }
                 ImGui::SameLine();
                 ImGui::SliderInt("Simulation Batch size", &batch_size, 0, 1e9);
                 ImGui::Spacing();
@@ -182,6 +187,7 @@ void ShowConvPlot(bool *p_open, Interface *mApp) {
                 }
                 if(apply_otf_change){ // model/otf changes needing a reload
                     mApp->worker.model->otfParams.batch_size = batch_size;
+                    mApp->worker.model->otfParams.run_batch = run_batched;
                     mApp->worker.simManager.ForwardOtfParams(&mApp->worker.model->otfParams);
                 }
                 ImGui::EndTabItem();

@@ -51,6 +51,7 @@ public:
     omp_lock_t* lock;
 
     bool runLoop();
+    bool runLoop_batched();
 
 private:
     [[nodiscard]] char *getSimStatus() const;
