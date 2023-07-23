@@ -129,7 +129,6 @@ enum class EdgeType {
 struct BoundEdge {
     // BoundEdge Public Methods
     BoundEdge() = default;
-
     BoundEdge(double t, int primNum, bool starting) : t(t), primNum(primNum) {
         type = starting ? EdgeType::Start : EdgeType::End;
     }
@@ -705,37 +704,48 @@ std::tuple<double, int, int> KdTreeAccel::SplitTest(int axis, const AxisAlignedB
 
                 auto ray = Ray();
                 double locTMax = tMax;
-#pragma omp parallel for default(none) firstprivate(ray) shared(battery, axis, hitCountA, hitCountB, hitCountBoth, local_battery, edges, bestAxis, bestOffset, edgeT)
-                for (int sample_id = 0; sample_id < local_battery.size(); sample_id++) {
-                    auto& ind = local_battery[sample_id];
-                    ray.origin = battery[ind.index].pos;
-                    ray.direction = battery[ind.index].dir;
-                    Vector3d invDir(1.0 / ray.direction.x, 1.0 / ray.direction.y, 1.0 / ray.direction.z);
-                    int dirIsNeg[3] = {invDir.x < 0, invDir.y < 0, invDir.z < 0};
-                    /*hitcount1 += b1.IntersectBox(ray, invDir, dirIsNeg) ? 1 : 0;
-                    hitcount0 += b0.IntersectBox(ray, invDir, dirIsNeg) ? 1 : 0;*/
+#pragma omp parallel default(none) firstprivate(ray,locTMax) shared(local_battery)
+                {
+                    int hitCountB_local = 0;
+                    int hitCountA_local = 0;
+                    int hitCountBoth_local = 0;
+#pragma omp for
+                    for (int sample_id = 0; sample_id < local_battery.size(); sample_id++) {
+                        auto &ind = local_battery[sample_id];
+                        ray.origin = battery[ind.index].pos;
+                        ray.direction = battery[ind.index].dir;
+                        Vector3d invDir(1.0 / ray.direction.x, 1.0 / ray.direction.y, 1.0 / ray.direction.z);
+                        int dirIsNeg[3] = {invDir.x < 0, invDir.y < 0, invDir.z < 0};
+                        /*hitcount1 += b1.IntersectBox(ray, invDir, dirIsNeg) ? 1 : 0;
+                        hitcount0 += b0.IntersectBox(ray, invDir, dirIsNeg) ? 1 : 0;*/
 
-                    // Compute parametric distance along ray to split plane
-                    double tSplit = edgeT;
-                    //int axis = node->SplitAxis();
-                    double tPlane = (tSplit - ray.origin[axis]) * invDir[axis];
+                        // Compute parametric distance along ray to split plane
+                        double tSplit = edgeT;
+                        //int axis = node->SplitAxis();
+                        double tPlane = (tSplit - ray.origin[axis]) * invDir[axis];
 
-                    // Get node children pointers for ray
-                    const KdAccelNode *firstChild, *secondChild;
-                    int belowFirst =
-                            (ray.origin[axis] < tSplit) ||
-                            (ray.origin[axis] == tSplit && ray.direction[axis] <= 0);
+                        // Get node children pointers for ray
+                        const KdAccelNode *firstChild, *secondChild;
+                        int belowFirst =
+                                (ray.origin[axis] < tSplit) ||
+                                (ray.origin[axis] == tSplit && ray.direction[axis] <= 0);
 
-                    // Advance to next child node, possibly enqueue other child
-                    if (tPlane > ind.tMax || tPlane <= 0)
-#pragma omp atomic
-                        hitCountA++;// test first child
-                    else if (tPlane < ind.tMin)
-#pragma omp atomic
-                        hitCountB++;// test second child
-                    else {
-#pragma omp atomic
-                        hitCountBoth++;
+                        // Advance to next child node, possibly enqueue other child
+                        if (tPlane > ind.tMax || tPlane <= 0)
+                            hitCountA_local++;// test first child
+                        else if (tPlane < ind.tMin)
+                            hitCountB_local++;// test second child
+                        else {
+                            hitCountBoth_local++;
+                        }
+                        // combine local
+#pragma omp critical
+                        {
+                            hitCountA += hitCountA_local;
+                            hitCountB += hitCountB_local;
+                            hitCountBoth += hitCountBoth_local;
+
+                        }
                     }
                 }
                 double pAbove = (double) (hitCountA + hitCountBoth) * inv_denum;
@@ -831,10 +841,12 @@ std::tuple<double, int, int> KdTreeAccel::SplitHybridProb(int axis, const AxisAl
     // Compute cost of all splits for _axis_ to find best
     int nBelow = 0, nAbove = nPrimitives;
 
+#ifdef WRITE_KD_COSTFILE
     std::ofstream cost_writer;
     if(nPrimitives > 800 && nPrimitives < 850){
         cost_writer.open(fmt::format("costfile_{}.txt",nextFreeNode-1));
     }
+#endif
     for (int i = 0; i < 2 * nPrimitives; ++i) {
         if (edges[axis][i].type == EdgeType::End) {
             --nAbove;
@@ -902,10 +914,11 @@ std::tuple<double, int, int> KdTreeAccel::SplitHybridProb(int axis, const AxisAl
                     bestOffset = i;
                 }
 
-
+#ifdef WRITE_KD_COSTFILE
                 if(cost_writer.is_open()){
                     cost_writer << edges[axis][i].t << " " << probabilities[edges[axis][i].primNum] << " " << cost_sah << " " << cost << " " << un_cost << "\n";
                 }
+#endif
             }
         }
         if (edges[axis][i].type == EdgeType::Start) {
@@ -918,9 +931,11 @@ std::tuple<double, int, int> KdTreeAccel::SplitHybridProb(int axis, const AxisAl
         }
     }
 
+#ifdef WRITE_KD_COSTFILE
     if(cost_writer.is_open()){
         cost_writer.close();
     }
+#endif
     //CHECK(nBelow == nPrimitives && nAbove == 0);
 
     return {bestCost, bestAxis, bestOffset};
@@ -976,10 +991,12 @@ std::tuple<double, int, int> KdTreeAccel::SplitHybrid(int axis, const AxisAligne
     int nBelow = 0, nAbove = nPrimitives;
     double inv_denum = 1.0 / local_battery.size();
 
+#ifdef WRITE_KD_COSTFILE
     std::ofstream cost_writer;
     if(local_battery.size() > 1000 && local_battery.size() < 1200){
         cost_writer.open(fmt::format("costfile_rdh_{}.txt",nextFreeNode-1));
     }
+#endif
 
     int nbEdgeInsideNode = 0;
     for (int i = 0; i < 2 * nPrimitives; ++i) {
@@ -1075,7 +1092,7 @@ std::tuple<double, int, int> KdTreeAccel::SplitHybrid(int axis, const AxisAligne
                 }*/
 
                 double cost = traversalCost
-                              + isectCost * (1 - eb) *
+                              + isectCost * (1.0 - eb) *
                                 (pBelow * nBelow + pAbove * nAbove);
 
                 /*double alpha = 0.1;
@@ -1091,9 +1108,11 @@ std::tuple<double, int, int> KdTreeAccel::SplitHybrid(int axis, const AxisAligne
                     bestOffset = i;
                 }
 
+#ifdef WRITE_KD_COSTFILE
                 if(cost_writer.is_open()){
                     cost_writer << edges[axis][i].t << " " << cost_sah << " " << cost << " " << linCost << "\n";
                 }
+#endif
             }
         }
         if (edges[axis][i].type == EdgeType::Start) {
@@ -1106,9 +1125,11 @@ std::tuple<double, int, int> KdTreeAccel::SplitHybrid(int axis, const AxisAligne
         fmt::print("Warning, no edges were inside node, could result into malformed node\n");
     }*/
 
+#ifdef WRITE_KD_COSTFILE
     if(cost_writer.is_open()){
         cost_writer.close();
     }
+#endif
     //CHECK(nBelow == nPrimitives && nAbove == 0);
 
     return {bestCost, bestAxis, bestOffset};
@@ -1136,36 +1157,34 @@ struct RDHBucketInfo {
     AxisAlignedBoundingBox bounds1;
 };
 
-void IntersectBins(Ray& ray, std::vector<RDHBucketInfo>& buckets, int axis){
+int IntersectBins(Ray& ray, std::vector<RDHBucketInfo>& buckets, int axis){
 
     for (auto &bin : buckets) {
         double distl = 1e99;
         double distr = 1e99;
 
+        if(bin.count==0)
+            continue; // is count the correct attribute to skip ?
         double t0;
         double t1;
         if(bin.bounds0.IntersectP(ray, &t0, &t1, axis)){
-
-#pragma omp atomic
             bin.countl++;
             distl = t0;
         }
 
         if(bin.bounds1.IntersectP(ray, &t0, &t1, axis)){
-#pragma omp atomic
             bin.countr++;
             distr = t0;
         }
 
         if(distl < distr){
-#pragma omp atomic
             bin.ncloserl++;
         }
         else{
-#pragma omp atomic
             bin.ncloserr++;
         }
     }
+    return 0;
 }
 
 std::tuple<double, int, int, bool, bool> KdTreeAccel::SplitHybridBin(int axis, const AxisAlignedBoundingBox &nodeBounds,
@@ -1270,13 +1289,14 @@ std::tuple<double, int, int, bool, bool> KdTreeAccel::SplitHybridBin(int axis, c
         assert(b >= 0);
         assert(b < nBuckets);
         for(int bb = b; bb < buckets.size(); ++bb){
-            buckets[bb].count++;
             buckets[bb].indPos = i;
             if (edge.type == EdgeType::End) {
+                buckets[bb].count--;
                 buckets[bb].probAbove -= primChance[edge.primNum];
                 --buckets[bb].nAbove;
             }
             if (edge.type == EdgeType::Start) {
+                buckets[bb].count++;
                 buckets[bb].probBelow += primChance[edge.primNum];
                 ++buckets[bb].nBelow;
             }
@@ -1291,24 +1311,45 @@ std::tuple<double, int, int, bool, bool> KdTreeAccel::SplitHybridBin(int axis, c
 
     // ray intersection computation
     // ray sampling
+    bool skipL = false;
+    bool skipR = false;
+    std::vector<TestRayLoc> battery_below, battery_above;
+    if(!skipL || !skipR)
     {
         auto ray = Ray();
+
+
         double locTMax = tMax;
-#pragma omp parallel for default(none) firstprivate(ray) shared(buckets, battery, axis, local_battery, edges, bestAxis, bestOffset)
-        for (int sample_id = 0; sample_id < local_battery.size(); sample_id++) {
-            auto& ind = local_battery[sample_id];
-            ray.origin = battery[ind.index].pos;
-            ray.direction = battery[ind.index].dir;
-            /*Vector3d invDir(1.0 / ray.direction.x, 1.0 / ray.direction.y, 1.0 / ray.direction.z);
-            int dirIsNeg[3] = {invDir.x < 0, invDir.y < 0, invDir.z < 0};
-            */
-            IntersectBins(ray, buckets, axis);
+#pragma omp parallel default(none) firstprivate(ray, locTMax) shared(local_battery, buckets, battery, axis, edges, bestAxis, bestOffset)
+        {
+            std::vector<RDHBucketInfo> buckets_local = buckets;
+#pragma omp for
+            for (int sample_id = 0; sample_id < local_battery.size(); sample_id++) {
+                auto &ind = local_battery[sample_id];
+                ray.origin = battery[ind.index].pos;
+                ray.direction = battery[ind.index].dir;
+                /*Vector3d invDir(1.0 / ray.direction.x, 1.0 / ray.direction.y, 1.0 / ray.direction.z);
+                int dirIsNeg[3] = {invDir.x < 0, invDir.y < 0, invDir.z < 0};
+                */
+                IntersectBins(ray, buckets_local, axis);
+            }
+
+            // combine local
+#pragma omp critical
+            {
+                for(int bi = 0; bi < buckets.size(); bi++){
+                    buckets[bi].countl += buckets_local[bi].countl;
+                    buckets[bi].countr += buckets_local[bi].countr;
+                    buckets[bi].ncloserl += buckets_local[bi].ncloserl;
+                    buckets[bi].ncloserr += buckets_local[bi].ncloserr;
+                }
+            }
         }
     }
 
     // Compute cost of all splits for _axis_ to find best
     //int nBelow = 0, nAbove = nPrimitives;
-    double inv_denum = 1.0 / local_battery.size();
+    double inv_denum = 1.0 / (double)local_battery.size();
 
     //<<Compute costs for splitting after each bucket>>
     std::vector<double> cost(buckets.size());
@@ -1325,8 +1366,8 @@ std::tuple<double, int, int, bool, bool> KdTreeAccel::SplitHybridBin(int axis, c
         cost_rdh[i] = 9e99;
     }
 
-    bool skipL = false;
-    bool skipR = false;
+    /*bool*/ skipL = false;
+    /*bool*/ skipR = false;
 
     for (int i = 0; i < buckets.size(); ++i) {
         if(buckets[i].count == 0)
@@ -1336,8 +1377,7 @@ std::tuple<double, int, int, bool, bool> KdTreeAccel::SplitHybridBin(int axis, c
             // Compute cost for split at _i_th edge
             double eb = (buckets[i].nAbove == 0 || buckets[i].nBelow == 0) ? emptyBonus : 0;
 
-            // SAH
-            // Compute child surface areas for split at _edgeT_
+            // SAH - Compute child surface areas for split at _edgeT_
             {
                 int otherAxis0 = (axis + 1) % 3, otherAxis1 = (axis + 2) % 3;
                 double belowSA = 2 * (d[otherAxis0] * d[otherAxis1] +
@@ -1392,8 +1432,8 @@ std::tuple<double, int, int, bool, bool> KdTreeAccel::SplitHybridBin(int axis, c
                 skipL = (double) (buckets[i].countl) * inv_denum > 0.5;
                 skipR = (double) (buckets[i].countr) * inv_denum > 0.5;
             }
-
         }
+        // -----
     }
 
     //<<Find bucket to split at that minimizes PROB metric>>
@@ -1647,10 +1687,10 @@ void KdTreeAccel::buildTree(int nodeNum, const AxisAlignedBoundingBox &nodeBound
     {
         auto ray = Ray();
         double locTMax = tMax;
-//#pragma omp parallel default(none) firstprivate(ray) shared(battery, local_battery, edges, bestAxis, bestOffset, battery_above, battery_below)
+#pragma omp parallel default(none) firstprivate(ray) shared(battery, local_battery, edges, bestAxis, bestOffset, battery_above, battery_below)
         {
             std::vector<TestRayLoc> battery_below_local, battery_above_local;
-//#pragma omp for
+#pragma omp for
             for (int sample_id = 0; sample_id < local_battery.size(); sample_id++) {
                 auto& ind = local_battery[sample_id];
                 ray.origin = battery[ind.index].pos;
@@ -1686,7 +1726,7 @@ void KdTreeAccel::buildTree(int nodeNum, const AxisAlignedBoundingBox &nodeBound
             }
 
             // combine local
-//#pragma omp critical
+#pragma omp critical
             {
                 battery_above.insert(battery_above.end(), battery_above_local.begin(), battery_above_local.end());
                 battery_below.insert(battery_below.end(), battery_below_local.begin(), battery_below_local.end());
