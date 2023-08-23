@@ -888,6 +888,8 @@ void Interface::OneTimeSceneInit_shared_pre() {
     //Quick test pipe
     menu->GetSubMenu("Test")->Add(nullptr);
     menu->GetSubMenu("Test")->Add("Quick Pipe", MENU_QUICKPIPE, SDLK_q, ALT_MODIFIER);
+    menu->GetSubMenu("Test")->Add("PRISM (N)", MENU_TEST_PRISMN, SDLK_p, ALT_MODIFIER);
+
 
     menu->GetSubMenu("Test")->Add(nullptr);
     menu->GetSubMenu("Test")->Add("Triangulate Geometry", MENU_TRIANGULATE);
@@ -1778,6 +1780,9 @@ geom->GetFacet(i)->sh.opacity_paramId != -1 ||
                     return true;
                 }
                 case MENU_QUICKPIPE:
+                    if (AskToSave()) BuildPipe(5.0, 5);
+                    return true;
+                case MENU_TEST_PRISMN:
                     if (AskToSave()) BuildPipe(5.0, 5);
                     return true;
                 case MENU_TRIANGULATE:

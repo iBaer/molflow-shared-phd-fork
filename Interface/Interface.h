@@ -219,6 +219,7 @@ typedef struct {
 #define MENU_TEST_PIPEN           807
 
 #define MENU_QUICKPIPE            810
+#define MENU_TEST_PRISMN           811
 
 #define MENU_TRIANGULATE          815
 #define MENU_ANALYSE              816
