@@ -281,8 +281,25 @@ int SimulationModel::AnalyzeGeom() {
     int sceneDepthComplexity = 0;
 
 
-    Vector3d rayDirection(0, 0, -1); // Change the direction to test different viewpoints
+    std::vector<Vector3d> rayDirections{(0, 0, -1), (0, -1, 0) , (-1 , 0 ,0),
+                                        (0, 0, 1), (0, 1, 0), (1, 0, 0)}; // Change the direction to test different viewpoints
 
+    for (int i = 0; i < numSamplePairs && triangles.size(); ++i) {
+
+        // Compute scene depth complexity
+        Vector3d ray_dir = rayDirections[i % rayDirections.size()];
+        for (const auto &tri: triangles) {
+            Vector3d edge1 = tri.v1 - tri.v0;
+            Vector3d edge2 = tri.v2 - tri.v0;
+            Vector3d normal = CrossProduct(edge1, edge2);
+
+            // Check if the ray intersects the triangle using the dot product with the normal
+            if (normal.x * ray_dir.x + normal.y * ray_dir.y + normal.z * ray_dir.z < 0) {
+                ++sceneDepthComplexity;
+            }
+        }
+        // ...
+    }
     for (int i = 0; i < numSamplePairs && triangles.size(); ++i) {
         // Randomly select two triangles and compute the distance between their centroids
         int idx1 = static_cast<int>(randomFloat(0, triangles.size()));
@@ -292,19 +309,6 @@ int SimulationModel::AnalyzeGeom() {
         Vector3d centroid2 = (triangles[idx2].v0 + triangles[idx2].v1 + triangles[idx2].v2) / 3.0f;
 
         avgDistance += Distance(centroid1, centroid2) / numSamplePairs;
-
-        // Compute scene depth complexity
-        Vector3d startPos = centroid1 + rayDirection * sceneExtent.z;
-        for (const auto& tri : triangles) {
-            Vector3d edge1 = tri.v1 - tri.v0;
-            Vector3d edge2 = tri.v2 - tri.v0;
-            Vector3d normal = CrossProduct(edge1, edge2);
-
-            // Check if the ray intersects the triangle using the dot product with the normal
-            if (normal.x * rayDirection.x + normal.y * rayDirection.y + normal.z * rayDirection.z < 0) {
-                ++sceneDepthComplexity;
-            }
-        }
     }
 
     // Calculate the average polygon vertex count
