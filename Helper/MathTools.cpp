@@ -97,6 +97,16 @@ double RoundAngle(double a) {
 
 }
 
+// Converts an angle from degree to rad
+double DegToRad(double a) {
+    return a / 180.0 * PI;
+}
+
+// Converts an angle from degree to rad
+double RadToDeg(double a) {
+    return a * 180.0 / PI;
+}
+
 char* FormatMemory(size_t size) {
 	return FormatMemoryLL((long long)size);
 }

@@ -26,6 +26,8 @@ Full license text: https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html
 
 bool    IsEqual(const double &a, const double &b, double toleranceRatio=1E-6);
 double RoundAngle(double a);
+double DegToRad(double a);
+double RadToDeg(double a);
 size_t    GetPower2(size_t n);
 double Pow10(const double& a);
 /*
