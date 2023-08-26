@@ -45,7 +45,7 @@ namespace SettingsIO {
     extern bool isArchive; //! whether the input file is an archive
     extern bool outputFacetDetails; //! whether output for all facet details is wanted
     extern bool outputFacetQuantities; //! whether output for derived facet quantities is wanted
-    extern bool autogenerateTest; //! whether an automatically generated test case should be used as input
+    extern double autogenerateTest; //! whether an automatically generated test case should be used as input
 
     int prepareIO();
     int initDirectories();
